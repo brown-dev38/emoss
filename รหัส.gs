@@ -31,12 +31,19 @@ function doGet() {
 
 function getSheetList() {
   const ss = getSpreadsheet();
-  return ss.getSheets().map(s => s.getName());
+  // ชีตที่ขึ้นต้นด้วย _ เป็นชีตระบบ (เช่น _MENU) ไม่ต้องแสดงในรายการข้อมูล
+  return ss.getSheets().map(s => s.getName()).filter(name => name.charAt(0) !== '_');
 }
 
 function createNewSheet(sheetName, initialHeaders) {
   const ss = getSpreadsheet();
-  const cleanName = sheetName.trim();
+  const cleanName = String(sheetName || '').trim();
+  if (!cleanName) {
+    return { status: 'error', message: 'กรุณาระบุชื่อชีตข้อมูล' };
+  }
+  if (cleanName.charAt(0) === '_') {
+    return { status: 'error', message: 'ชื่อชีตที่ขึ้นต้นด้วย _ สงวนไว้สำหรับชีตระบบ' };
+  }
   if (ss.getSheetByName(cleanName)) {
     return { status: 'error', message: 'มีชื่อหัวข้องานนี้อยู่แล้ว' };
   }
@@ -48,7 +55,12 @@ function createNewSheet(sheetName, initialHeaders) {
 }
 
 function getSheetData(sheetName) {
-  const sheet = getTargetSheet(sheetName);
+  const ss = getSpreadsheet();
+  const namedSheet = sheetName ? ss.getSheetByName(sheetName) : null;
+  if (sheetName && !namedSheet) {
+    return { sheetName: sheetName, headers: [], rows: [], missing: true };
+  }
+  const sheet = namedSheet || getTargetSheet(sheetName);
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
   
@@ -137,4 +149,163 @@ function importExcelData(sheetName, excelHeaders, excelRows, mode) {
   }
 
   return { status: 'success', count: mappedRows.length, newCols: newCols };
+}
+
+// ============================================================
+// โครงสร้างเมนู (Config): หัวข้อหลัก -> หัวข้อย่อย -> ชีตข้อมูล
+// เก็บไว้ในชีตระบบ _MENU
+// ============================================================
+const MENU_SHEET_NAME = '_MENU';
+const MENU_HEADERS = ['id', 'parent_id', 'title', 'sheet_name', 'icon', 'sort', 'note'];
+
+const DEFAULT_MENU_ROWS = [
+  ['1', '', 'การรับเข้าและผลลัพธ์การศึกษา', '', 'bi-mortarboard-fill', 1, 'ภาพรวมการรับเข้าและผลลัพธ์การศึกษาของนิสิต'],
+  ['1.1', '1', 'จำนวนลงทะเบียนใหม่', '', 'bi-person-plus-fill', 1, ''],
+  ['1.1.1', '1.1', 'ผลการรับเข้าแยกตามรายงาน', '1.1.1 ผลการรับเข้าแยกตามรายงาน', 'bi-file-earmark-bar-graph-fill', 1, ''],
+  ['2', '', 'ผลการเรียนและการคงอยู่ของนิสิต', '', 'bi-activity', 2, ''],
+  ['2.1', '2', 'การออกกลางคันชั้นปีที่ 1 จำแนกตามรุ่นเข้า', '2.1 การออกกลางคันชั้นปีที่ 1', 'bi-person-dash-fill', 1, ''],
+  ['3', '', 'การสำเร็จการศึกษา', '', 'bi-award-fill', 3, ''],
+  ['3.1', '3', 'อัตราสำเร็จตามหลักสูตร (ร้อยละ)', '3.1 อัตราสำเร็จตามหลักสูตร', 'bi-patch-check-fill', 1, 'เก็บจำนวนแรกเข้าและจำนวนผู้สำเร็จ แล้วคำนวณร้อยละ']
+];
+
+const DEFAULT_DATA_HEADERS = {
+  '1.1.1 ผลการรับเข้าแยกตามรายงาน': ['ปีการศึกษา', 'ประเภทรายงาน', 'หลักสูตร', 'จำนวนรับเข้า (คน)', 'หมายเหตุ'],
+  '2.1 การออกกลางคันชั้นปีที่ 1': ['รุ่นเข้า', 'หลักสูตร', 'จำนวนนิสิตในรุ่น (คน)', 'ออกกลางคัน (คน)', 'หมายเหตุ'],
+  '3.1 อัตราสำเร็จตามหลักสูตร': ['รุ่นเข้า', 'หลักสูตร', 'จำนวนแรกเข้า (คน)', 'จำนวนผู้สำเร็จ (คน)', 'หมายเหตุ']
+};
+
+function ensureDataSheet(sheetName, initialHeaders) {
+  const name = String(sheetName || '').trim();
+  if (!name) return null;
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    const headers = (initialHeaders && initialHeaders.length)
+      ? initialHeaders
+      : (DEFAULT_DATA_HEADERS[name] || []);
+    if (headers.length > 0) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+  }
+  return sheet;
+}
+
+function seedMenu(menuSheet) {
+  menuSheet.getRange(2, 1, DEFAULT_MENU_ROWS.length, MENU_HEADERS.length).setValues(DEFAULT_MENU_ROWS);
+  DEFAULT_MENU_ROWS.forEach(row => {
+    if (row[3]) ensureDataSheet(row[3], DEFAULT_DATA_HEADERS[row[3]] || []);
+  });
+}
+
+function getMenuSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(MENU_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(MENU_SHEET_NAME);
+    sheet.getRange(1, 1, 1, MENU_HEADERS.length).setValues([MENU_HEADERS]);
+    sheet.setFrozenRows(1);
+    seedMenu(sheet);
+    sheet.hideSheet();
+  }
+  return sheet;
+}
+
+function getMenuConfig() {
+  try {
+    const menuSheet = getMenuSheet();
+    const lastRow = menuSheet.getLastRow();
+    const rows = [];
+    if (lastRow > 1) {
+      const values = menuSheet.getRange(2, 1, lastRow - 1, MENU_HEADERS.length).getDisplayValues();
+      values.forEach(r => {
+        const id = String(r[0]).trim();
+        if (!id) return;
+        rows.push({
+          id: id,
+          parent_id: String(r[1]).trim(),
+          title: String(r[2]).trim(),
+          sheet_name: String(r[3]).trim(),
+          icon: String(r[4]).trim(),
+          sort: Number(r[5]) || 0,
+          note: String(r[6]).trim()
+        });
+      });
+    }
+    return { rows: rows, sheets: getSheetList() };
+  } catch (err) {
+    return { rows: [], sheets: [], error: err.message || String(err) };
+  }
+}
+
+function normalizeMenuRows(rows) {
+  if (!rows || rows.length === 0) {
+    throw new Error('ต้องมีหัวข้ออย่างน้อย 1 รายการ');
+  }
+
+  const clean = [];
+  const seen = {};
+  rows.forEach((r, index) => {
+    const id = String((r && r.id) || '').trim();
+    const title = String((r && r.title) || '').trim();
+    if (!id) throw new Error('แถวที่ ' + (index + 1) + ' ยังไม่มีรหัสหัวข้อ');
+    if (!title) throw new Error('แถวที่ ' + (index + 1) + ' (รหัส ' + id + ') ยังไม่มีชื่อหัวข้อ');
+    if (seen[id]) throw new Error('รหัสหัวข้อซ้ำกัน: ' + id);
+    seen[id] = true;
+    clean.push({
+      id: id,
+      parent_id: String((r && r.parent_id) || '').trim(),
+      title: title,
+      sheet_name: String((r && r.sheet_name) || '').trim(),
+      icon: String((r && r.icon) || '').trim() || 'bi-folder2',
+      sort: Number(r && r.sort) || (index + 1),
+      note: String((r && r.note) || '').trim()
+    });
+  });
+
+  const byId = {};
+  clean.forEach(n => { byId[n.id] = n; });
+
+  clean.forEach(n => {
+    let parentId = n.parent_id;
+    let guard = 0;
+    while (parentId) {
+      const parent = byId[parentId];
+      if (!parent) throw new Error('ไม่พบหัวข้อแม่รหัส "' + parentId + '" ของ "' + n.title + '"');
+      parentId = parent.parent_id;
+      if (++guard > 100) throw new Error('โครงสร้างเมนูมีวงจร (หัวข้อแม่วนซ้ำ)');
+    }
+  });
+
+  clean.forEach(n => {
+    const hasChild = clean.some(c => c.parent_id === n.id);
+    if (hasChild && n.sheet_name) {
+      throw new Error('"' + n.title + '" มีหัวข้อย่อยอยู่ จึงเก็บข้อมูลที่หัวข้อนี้ไม่ได้ กรุณาย้ายชีตไปที่หัวข้อย่อย');
+    }
+  });
+
+  return clean;
+}
+
+function saveMenuConfig(rows) {
+  try {
+    const clean = normalizeMenuRows(rows);
+    const menuSheet = getMenuSheet();
+    clean.forEach(n => {
+      if (n.sheet_name) ensureDataSheet(n.sheet_name);
+    });
+
+    const lastRow = menuSheet.getLastRow();
+    if (lastRow > 1) {
+      menuSheet.getRange(2, 1, lastRow - 1, MENU_HEADERS.length).clearContent();
+    }
+    if (clean.length > 0) {
+      const values = clean.map(n => [n.id, n.parent_id, n.title, n.sheet_name, n.icon, n.sort, n.note]);
+      menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setValues(values);
+    }
+
+    return { status: 'success', rows: clean, sheets: getSheetList() };
+  } catch (err) {
+    return { status: 'error', message: err.message };
+  }
 }

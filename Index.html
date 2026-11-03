@@ -486,71 +486,195 @@
       color: #0f172a;
     }
 
-    /* ===== Prompt Modal (กรอกข้อมูล) ===== */
-    .prompt-modal-body {
-      padding: 20px 24px 16px;
+    /* ===== เมนูโครงสร้างข้อมูล ===== */
+    .menu-children {
+      display: none;
     }
 
-    .prompt-modal-label {
+    .menu-children.open {
       display: block;
-      text-align: left;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 8px;
     }
 
-    .prompt-modal-input {
-      width: 100%;
-      border: 1.5px solid #cbd5e1;
+    .menu-link .menu-label {
+      flex: 1;
+      line-height: 1.35;
+    }
+
+    .menu-link .menu-arrow {
+      font-size: 0.72rem !important;
+      color: #94a3b8;
+      transition: transform 0.2s ease;
+    }
+
+    .menu-link.expanded .menu-arrow {
+      transform: rotate(180deg);
+    }
+
+    .menu-empty {
+      color: #64748b;
+      font-size: 0.78rem;
+      padding: 6px 12px;
+      line-height: 1.5;
+    }
+
+    .menu-empty .menu-error-msg {
+      color: #fca5a5;
+      word-break: break-word;
+      margin-top: 4px;
+    }
+
+    .menu-empty .menu-retry {
+      background: none;
+      border: none;
+      padding: 0;
+      margin-top: 6px;
+      color: #a7f3d0;
+      font-size: 0.78rem;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* ===== หน้าดูเอกสาร ===== */
+    .doc-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .doc-breadcrumb {
+      font-size: 0.82rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .doc-breadcrumb .crumb.current {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .doc-breadcrumb .crumb-sep {
+      font-size: 0.68rem;
+      color: #cbd5e1;
+    }
+
+    .doc-sheet {
+      padding: 32px 36px 24px;
+    }
+
+    .doc-header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+
+    .doc-kicker {
+      font-size: 0.74rem;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .doc-title {
+      font-weight: 800;
+      color: #0f172a;
+      margin: 6px 0 4px;
+    }
+
+    .doc-note {
+      color: #475569;
+      font-size: 0.9rem;
+    }
+
+    .doc-meta {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .doc-table thead th {
+      background: #ecfdf5;
+      color: #065f46;
+      font-size: 0.82rem;
+      border-color: #d1fae5;
+      white-space: nowrap;
+    }
+
+    .doc-table td {
+      font-size: 0.86rem;
+    }
+
+    .doc-footer {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px dashed #e2e8f0;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      text-align: right;
+    }
+
+    /* ===== หน้าตั้งค่า ===== */
+    .config-table thead th {
+      background: #f8fafc;
+      font-size: 0.78rem;
+      color: #475569;
+      white-space: nowrap;
+    }
+
+    .config-table td {
+      vertical-align: middle;
+      padding: 6px 8px;
+    }
+
+    .alert-soft {
+      background: #ecfdf5;
+      border: 1px solid #d1fae5;
+      color: #065f46;
       border-radius: 10px;
       padding: 10px 12px;
-      font-size: 0.95rem;
-      font-family: inherit;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      font-size: 0.82rem;
+      line-height: 1.55;
     }
 
-    .prompt-modal-input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(1, 109, 83, 0.15);
-    }
+    /* ===== Print ===== */
+    @media print {
+      .sidebar,
+      .topbar,
+      .doc-toolbar,
+      #saveStatusToast,
+      .alert-modal-overlay {
+        display: none !important;
+      }
 
-    .prompt-modal-actions {
-      display: flex;
-      gap: 10px;
-      padding: 0 24px 20px;
-    }
+      .main-area {
+        margin-left: 0 !important;
+      }
 
-    .prompt-modal-btn {
-      flex: 1;
-      border: none;
-      border-radius: 10px;
-      padding: 11px;
-      font-weight: 600;
-      font-size: 0.92rem;
-      cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-      font-family: inherit;
-    }
+      .content {
+        padding: 0 !important;
+      }
 
-    .prompt-modal-btn.yes {
-      background: var(--primary);
-      color: #fff;
-    }
+      body {
+        background: #fff !important;
+      }
 
-    .prompt-modal-btn.yes:hover {
-      background: var(--primary-dark);
-    }
+      .doc-sheet {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
 
-    .prompt-modal-btn.no {
-      background: #fff;
-      color: #475569;
-      border: 1px solid #cbd5e1;
-    }
-
-    .prompt-modal-btn.no:hover {
-      background: #f1f5f9;
+      .doc-table thead th {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+      }
     }
 
     /* ===== Responsive ===== */
@@ -594,7 +718,15 @@
         <i class="bi bi-table"></i> จัดการฐานข้อมูล
       </button>
 
-      <div class="nav-label mt-3">ข้อมูลอัปเดตอัตโนมัติจาก Google Sheets</div>
+      <div class="nav-label mt-3">เอกสารตามหัวข้อ</div>
+      <div id="menuTreeNav">
+        <div class="menu-empty">กำลังโหลดเมนู...</div>
+      </div>
+
+      <div class="nav-label mt-3">ตั้งค่า</div>
+      <button type="button" class="sidebar-link" onclick="openConfigPage(this)">
+        <i class="bi bi-sliders2"></i> ตั้งค่าเมนู / คอลัมน์
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -643,22 +775,6 @@
           <div class="confirm-modal-actions">
             <button type="button" class="confirm-modal-btn no" onclick="closeConfirmModal()">ยกเลิก</button>
             <button type="button" class="confirm-modal-btn yes" onclick="confirmYes()">ยืนยัน</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal กรอกข้อมูล (Prompt) -->
-      <div id="promptModal" class="alert-modal-overlay" onclick="closePromptModal(event)">
-        <div class="alert-modal" style="text-align:left;">
-          <div class="alert-modal-icon" id="promptIcon"></div>
-          <div class="alert-modal-title" id="promptTitle" style="text-align:center; padding-bottom: 4px;"></div>
-          <div class="prompt-modal-body">
-            <label class="prompt-modal-label" id="promptLabel"></label>
-            <input type="text" id="promptInput" class="prompt-modal-input" onkeydown="if(event.key==='Enter')confirmPromptYes()">
-          </div>
-          <div class="prompt-modal-actions">
-            <button type="button" class="prompt-modal-btn no" onclick="closePromptModal()">ยกเลิก</button>
-            <button type="button" class="prompt-modal-btn yes" onclick="confirmPromptYes()">ตกลง</button>
           </div>
         </div>
       </div>
@@ -770,29 +886,13 @@
         <div class="panel-card mb-4">
           <div class="panel-head">
             <div class="panel-title"><i class="bi bi-folder-check text-primary"></i> เลือกหมวดหมู่งาน</div>
-            <button onclick="promptNewSheet()" class="btn btn-outline-primary btn-sm">
-              <i class="bi bi-plus-lg me-1"></i>สร้างหมวดหมู่งานใหม่
+            <button onclick="openConfigPage()" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-sliders2 me-1"></i>ตั้งค่าหัวข้อ / สร้างชีต
             </button>
           </div>
           <div class="panel-body d-flex flex-wrap gap-2 align-items-center">
             <select id="sheetSelector" class="form-select" style="max-width: 360px;" onchange="loadCurrentSheet()"></select>
             <span class="text-muted small">เลือกหมวดหมู่เพื่อดูและจัดการข้อมูล</span>
-          </div>
-        </div>
-
-        <!-- ตั้งค่าหัวข้อคอลัมน์ -->
-        <div class="panel-card mb-4">
-          <div class="panel-head">
-            <div class="panel-title"><i class="bi bi-list-columns text-primary"></i> หัวข้อคอลัมน์ (Headers Config)</div>
-            <button onclick="saveCustomHeaders()" class="btn btn-dark btn-sm">
-              <i class="bi bi-check-lg me-1"></i>บันทึกการตั้งค่า
-            </button>
-          </div>
-          <div class="panel-body">
-            <label class="form-label small text-muted">ระบุชื่อหัวข้อแต่ละคอลัมน์ คั่นด้วยเครื่องหมายลูกน้ำ ( , )</label>
-            <input type="text" id="headerConfigInput" class="form-control"
-                   placeholder="เช่น ปีการศึกษา, MD รับเข้า (คน), MD ตามแผน (%), PMD รับเข้า (คน)">
-            <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>การเปลี่ยนหัวข้อจะอัปเดตฟอร์มกรอกข้อมูลและตารางทั้งระบบทันที</div>
           </div>
         </div>
 
@@ -815,6 +915,110 @@
         </div>
       </section>
 
+      <!-- ===== ส่วนดูเอกสารรายหัวข้อ ===== -->
+      <section id="docView" style="display:none;">
+        <div class="doc-toolbar">
+          <div class="doc-breadcrumb" id="docBreadcrumb"></div>
+          <div class="ms-auto d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="printDoc()">
+              <i class="bi bi-printer me-1"></i>พิมพ์ / PDF
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="exportDocExcel()">
+              <i class="bi bi-file-earmark-excel me-1"></i>ดาวน์โหลด Excel
+            </button>
+            <button type="button" class="btn btn-primary-brand btn-sm" onclick="editCurrentDoc()">
+              <i class="bi bi-pencil-square me-1"></i>แก้ไขข้อมูล
+            </button>
+          </div>
+        </div>
+        <div class="panel-card doc-sheet" id="docSheet"></div>
+      </section>
+
+      <!-- ===== ส่วนตั้งค่า (Config) ===== -->
+      <section id="configView" style="display:none;">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-sliders2 me-2 text-primary"></i>ตั้งค่าเมนู / คอลัมน์</h5>
+
+        <div class="panel-card mb-4">
+          <div class="panel-head">
+            <div class="panel-title"><i class="bi bi-diagram-3 text-primary"></i> โครงสร้างเมนู</div>
+            <div class="d-flex gap-2">
+              <button onclick="addConfigRow('')" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>เพิ่มหัวข้อหลัก
+              </button>
+              <button onclick="saveMenuConfig()" class="btn btn-dark btn-sm">
+                <i class="bi bi-check-lg me-1"></i>บันทึกโครงสร้าง
+              </button>
+            </div>
+          </div>
+          <div class="panel-body pb-2">
+            <div class="alert-soft">
+              <i class="bi bi-info-circle me-1"></i>
+              กำหนดรหัสเป็นลำดับชั้น (เช่น 1, 1.1, 1.1.1) และเลือก "อยู่ภายใต้" เพื่อสร้างหัวข้อย่อย
+              — หัวข้อที่ไม่มีหัวข้อย่อยจึงจะผูก "ชีตข้อมูล" ได้ (ถ้าไม่ผูก ชีตจะไม่ปรากฏในเมนู)
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm config-table mb-0">
+              <thead>
+                <tr>
+                  <th style="width:80px;">รหัส</th>
+                  <th style="width:180px;">อยู่ภายใต้</th>
+                  <th style="min-width:220px;">ชื่อหัวข้อ</th>
+                  <th style="min-width:200px;">ชีตข้อมูล</th>
+                  <th style="width:150px;">ไอคอน</th>
+                  <th style="width:70px;">ลำดับ</th>
+                  <th style="min-width:160px;">คำอธิบาย</th>
+                  <th style="width:90px;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="configMenuBody"></tbody>
+            </table>
+          </div>
+          <datalist id="sheetNameOptions"></datalist>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <div class="panel-card h-100">
+              <div class="panel-head">
+                <div class="panel-title"><i class="bi bi-list-columns text-primary"></i> หัวข้อคอลัมน์</div>
+                <button onclick="saveCustomHeaders()" class="btn btn-dark btn-sm">
+                  <i class="bi bi-check-lg me-1"></i>บันทึก
+                </button>
+              </div>
+              <div class="panel-body">
+                <label class="form-label small text-muted">เลือกชีตข้อมูล</label>
+                <select id="configSheetSelector" class="form-select form-select-sm mb-3" onchange="loadConfigSheetHeaders()"></select>
+                <label class="form-label small text-muted">ชื่อหัวข้อแต่ละคอลัมน์ คั่นด้วยเครื่องหมายลูกน้ำ ( , )</label>
+                <input type="text" id="headerConfigInput" class="form-control"
+                       placeholder="เช่น ปีการศึกษา, MD รับเข้า (คน), MD ตามแผน (%)">
+                <div class="form-text mt-2" id="headerConfigHint"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="panel-card h-100">
+              <div class="panel-head">
+                <div class="panel-title"><i class="bi bi-folder-plus text-primary"></i> สร้างชีตข้อมูลใหม่</div>
+              </div>
+              <div class="panel-body">
+                <label class="form-label small text-muted">ชื่อชีต (เช่น 4.1 ความพึงพอใจ)</label>
+                <div class="input-group input-group-sm mb-3">
+                  <input type="text" id="newSheetName" class="form-control" placeholder="ชื่อชีตข้อมูลใหม่">
+                  <button class="btn btn-outline-success" onclick="createSheetFromConfig()">
+                    <i class="bi bi-plus-lg me-1"></i>สร้าง
+                  </button>
+                </div>
+                <div class="form-text">
+                  สร้างชีตแล้วให้กลับไปผูกชีตนี้กับหัวข้อในตารางโครงสร้างเมนูด้านบน
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 
@@ -824,8 +1028,15 @@
     let currentRows = [];
     let highlightLastRow = false;
 
+    let menuRows = [];
+    let menuTree = [];
+    let configRows = [];
+    let currentDocNode = null;
+    let currentDocHeaders = [];
+    let currentDocRows = [];
+
     // ===== Sidebar navigation (สลับหน้า ทีละหน้า) =====
-    const pageIds = ['dashboardView', 'entryView', 'dataView'];
+    const pageIds = ['dashboardView', 'entryView', 'dataView', 'docView', 'configView'];
 
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -864,19 +1075,33 @@
       pctEl.closest('.stat-icon').style.color = palette.fg;
     }
 
-    window.onload = () => {
+    function reloadMenu() {
       google.script.run
-        .withSuccessHandler(sheets => {
-          if (sheets && sheets.length > 0) {
-            renderSheetSelector(sheets, sheets[0]);
-            loadCurrentSheet();
-          } else {
-            updateStats();
+        .withSuccessHandler(res => {
+          if (res && res.error) {
+            renderMenuError(res.error);
+            return;
           }
+          applyMenuConfig(res);
         })
-        .withFailureHandler(handleScriptError)
-        .getSheetList();
-    };
+        .withFailureHandler(err => {
+          const message = (err && err.message) ? err.message : String(err);
+          renderMenuError(message);
+          handleScriptError(err);
+        })
+        .getMenuConfig();
+    }
+
+    window.onload = reloadMenu;
+
+    function renderMenuError(message) {
+      document.getElementById('menuTreeNav').innerHTML = `
+        <div class="menu-empty">
+          โหลดเมนูไม่สำเร็จ
+          <div class="menu-error-msg">${escapeHtml(message)}</div>
+          <button type="button" class="menu-retry" onclick="reloadMenu()">ลองอีกครั้ง</button>
+        </div>`;
+    }
 
     // ฟังก์ชันดักจับ Error เพื่อไม่ให้หน้าเว็บค้าง
     function handleScriptError(err) {
@@ -944,42 +1169,15 @@
       if (typeof cb === 'function') cb();
     }
 
-    // ===== Prompt Modal =====
-    let promptModalCallback = null;
-
-    function showPromptModal(title, label, defaultValue, onConfirm) {
-      document.getElementById('promptIcon').className = 'alert-modal-icon info';
-      document.getElementById('promptIcon').innerHTML = alertIcons.info;
-      document.getElementById('promptTitle').textContent = title;
-      document.getElementById('promptLabel').textContent = label;
-      const input = document.getElementById('promptInput');
-      input.value = defaultValue || '';
-      promptModalCallback = onConfirm || null;
-      document.getElementById('promptModal').classList.add('show');
-      input.focus();
-      input.select();
-    }
-
-    function closePromptModal(event) {
-      if (event && event.target && event.target.id !== 'promptModal') return;
-      document.getElementById('promptModal').classList.remove('show');
-      promptModalCallback = null;
-    }
-
-    function confirmPromptYes() {
-      const input = document.getElementById('promptInput');
-      const value = input.value.trim();
-      document.getElementById('promptModal').classList.remove('show');
-      const cb = promptModalCallback;
-      promptModalCallback = null;
-      if (typeof cb === 'function') cb(value);
-    }
-
     // แปลง string เป็น HTML (กัน XSS จากข้อมูลผู้ใช้)
     function escapeHtml(str) {
       const div = document.createElement('div');
       div.textContent = String(str);
       return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function renderSheetSelector(sheets, selected) {
@@ -995,9 +1193,20 @@
       currentSheet = sel.value;
     }
 
+    function renderSheetOptions(sheets) {
+      const dl = document.getElementById('sheetNameOptions');
+      dl.innerHTML = sheets.map(n => `<option value="${escapeAttr(n)}"></option>`).join('');
+
+      const cfgSel = document.getElementById('configSheetSelector');
+      const prev = cfgSel.value;
+      cfgSel.innerHTML = sheets.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('');
+      cfgSel.value = sheets.indexOf(prev) >= 0 ? prev : (sheets[0] || '');
+    }
+
     function loadCurrentSheet() {
       const sel = document.getElementById('sheetSelector');
       currentSheet = sel.value || currentSheet;
+      if (!currentSheet) return;
 
       google.script.run
         .withSuccessHandler(res => {
@@ -1005,7 +1214,6 @@
           currentHeaders = res.headers || [];
           currentRows = res.rows || [];
 
-          document.getElementById('headerConfigInput').value = currentHeaders.join(', ');
           document.getElementById('recordCountBadge').textContent = `${currentRows.length} รายการ`;
 
           renderForm(currentHeaders);
@@ -1016,48 +1224,455 @@
         .getSheetData(currentSheet);
     }
 
-    function promptNewSheet() {
-      showPromptModal('สร้างหมวดหมู่งานใหม่', 'ชื่อหมวดหมู่งาน (เช่น การสำเร็จการศึกษา, ความพึงพอใจ):', '', function(name) {
-        if (!name) return showAlertModal('warning', 'ยังไม่ได้กรอกชื่อ', 'กรุณาระบุชื่อหมวดหมู่งานที่ต้องการสร้าง');
-
-        showToast('กำลังสร้างหมวดหมู่...', true);
-        google.script.run
-          .withSuccessHandler(res => {
-            if (res.status === 'error') {
-              showToast('ยกเลิก', false);
-              return showAlertModal('warning', 'ไม่สามารถสร้างได้', res.message);
-            }
-            renderSheetSelector(res.sheets, res.sheetName);
-            loadCurrentSheet();
-            updateStats();
-            showAlertModal('success', 'สร้างสำเร็จ', `สร้างหมวดหมู่งาน "${res.sheetName}" แล้ว`);
-            setActiveNav('dataView');
-          })
-          .withFailureHandler(handleScriptError)
-          .createNewSheet(name, []);
-      });
-    }
-
     // ย้ายไปยังหน้า "จัดการฐานข้อมูล" พร้อมไฮไลต์เมนู
     function setActiveNav(id) {
       const btn = document.querySelector(`.sidebar-link[onclick*="'${id}'"]`);
       switchPage(id, btn);
     }
 
+    // ===== โครงสร้างเมนูจากชีต _MENU =====
+    function applyMenuConfig(res) {
+      const sheets = (res && res.sheets) || [];
+      menuRows = (res && res.rows) || [];
+      menuTree = buildMenuTree(menuRows);
+
+      renderMenuNav(menuTree);
+      renderConfigTable(menuRows);
+      renderSheetOptions(sheets);
+
+      const sel = document.getElementById('sheetSelector');
+      const prev = sel.value || currentSheet;
+      const next = sheets.indexOf(prev) >= 0 ? prev : (sheets[0] || '');
+      renderSheetSelector(sheets, next);
+
+      if (next && next !== prev) {
+        loadCurrentSheet();
+      } else if (!next) {
+        currentSheet = '';
+        currentHeaders = [];
+        currentRows = [];
+        renderForm([]);
+        renderTable([], []);
+        updateStats();
+      }
+    }
+
+    function buildMenuTree(rows) {
+      const byId = {};
+      rows.forEach(r => { byId[r.id] = Object.assign({}, r, { children: [] }); });
+
+      const roots = [];
+      rows.forEach(r => {
+        const node = byId[r.id];
+        if (r.parent_id && byId[r.parent_id]) {
+          byId[r.parent_id].children.push(node);
+        } else {
+          roots.push(node);
+        }
+      });
+
+      const sortNodes = list => {
+        list.sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0) || String(a.title).localeCompare(String(b.title), 'th'));
+        list.forEach(n => sortNodes(n.children));
+      };
+      sortNodes(roots);
+      return roots;
+    }
+
+    function renderMenuNav(tree) {
+      const box = document.getElementById('menuTreeNav');
+      if (!tree || tree.length === 0) {
+        box.innerHTML = '<div class="menu-empty">ยังไม่มีหัวข้อ — เพิ่มได้ที่เมนู "ตั้งค่าเมนู / คอลัมน์"</div>';
+        return;
+      }
+      box.innerHTML = tree.map(node => renderMenuNode(node, 1)).join('');
+    }
+
+    function renderMenuNode(node, depth) {
+      const hasChildren = node.children.length > 0;
+      const paddingLeft = 10 + (depth - 1) * 16;
+      const icon = escapeAttr(node.icon || (hasChildren ? 'bi-folder2' : 'bi-file-earmark-text'));
+      const arrow = hasChildren ? '<i class="bi bi-chevron-down menu-arrow"></i>' : '';
+      const childrenHtml = hasChildren
+        ? `<div class="menu-children open" data-parent="${escapeAttr(node.id)}">` +
+          node.children.map(child => renderMenuNode(child, depth + 1)).join('') + '</div>'
+        : '';
+
+      return `<div class="menu-node">
+        <button type="button" class="sidebar-link menu-link${hasChildren ? ' expanded' : ''}"
+                style="padding-left:${paddingLeft}px" data-id="${escapeAttr(node.id)}" onclick="onMenuClick(this)">
+          <i class="bi ${icon}"></i>
+          <span class="menu-label">${escapeHtml(node.title)}</span>
+          ${arrow}
+        </button>
+        ${childrenHtml}
+      </div>`;
+    }
+
+    function findMenuNode(id) {
+      return menuRows.find(r => r.id === id) || null;
+    }
+
+    function onMenuClick(btnEl) {
+      const id = btnEl.getAttribute('data-id');
+      const node = findMenuNode(id);
+      if (!node) return;
+
+      if (btnEl.classList.contains('expanded') || nodeHasChildren(node.id)) {
+        toggleMenuGroup(node.id, btnEl);
+        return;
+      }
+      openDocPage(node, btnEl);
+    }
+
+    function nodeHasChildren(id) {
+      return menuRows.some(r => r.parent_id === id);
+    }
+
+    function toggleMenuGroup(id, btnEl) {
+      let box = null;
+      document.querySelectorAll('#menuTreeNav .menu-children').forEach(el => {
+        if (el.getAttribute('data-parent') === id) box = el;
+      });
+      if (!box) return;
+      const open = box.classList.toggle('open');
+      btnEl.classList.toggle('expanded', open);
+    }
+
+    function getMenuPath(id) {
+      const path = [];
+      let node = findMenuNode(id);
+      let guard = 0;
+      while (node && guard++ < 100) {
+        path.unshift(node);
+        node = node.parent_id ? findMenuNode(node.parent_id) : null;
+      }
+      return path;
+    }
+
+    // ===== หน้าดูเอกสารรายหัวข้อ =====
+    function openDocPage(node, btnEl) {
+      currentDocNode = node;
+      currentDocHeaders = [];
+      currentDocRows = [];
+      switchPage('docView', btnEl);
+
+      if (!node.sheet_name) {
+        renderDocNotice(node, 'หัวข้อนี้ยังไม่ได้ผูกชีตข้อมูล');
+        return;
+      }
+
+      document.getElementById('docSheet').innerHTML =
+        '<div class="p-5 text-center text-muted"><div class="spinner-border spinner-border-sm me-2"></div>กำลังโหลดเอกสาร...</div>';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.missing) {
+            renderDocNotice(node, `ไม่พบชีต "${node.sheet_name}" กรุณาตรวจสอบการตั้งค่าเมนู`);
+            return;
+          }
+          currentDocHeaders = res.headers || [];
+          currentDocRows = res.rows || [];
+          renderDoc(node, currentDocHeaders, currentDocRows);
+        })
+        .withFailureHandler(handleScriptError)
+        .getSheetData(node.sheet_name);
+    }
+
+    function renderBreadcrumb(node) {
+      const path = getMenuPath(node.id);
+      document.getElementById('docBreadcrumb').innerHTML = path.map((p, i) =>
+        (i ? '<i class="bi bi-chevron-right crumb-sep"></i>' : '') +
+        `<span class="crumb${i === path.length - 1 ? ' current' : ''}">${escapeHtml(p.title)}</span>`
+      ).join('');
+    }
+
+    function renderDoc(node, headers, rows) {
+      renderBreadcrumb(node);
+
+      let tableHtml;
+      if (!headers.length) {
+        tableHtml = '<div class="p-5 text-center text-muted">' +
+          '<i class="bi bi-list-columns fs-3 d-block mb-2"></i>เอกสารนี้ยังไม่ได้กำหนดหัวข้อคอลัมน์' +
+          '<div class="small mt-1">ตั้งค่าได้ที่เมนู "ตั้งค่าเมนู / คอลัมน์"</div></div>';
+      } else {
+        const head = '<tr><th style="width:56px;">#</th>' +
+          headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr>';
+        const body = rows.length
+          ? rows.map((r, i) =>
+              `<tr><td class="row-num">${i + 1}</td>` +
+              headers.map((_, c) => `<td>${escapeHtml(r[c] !== undefined ? r[c] : '')}</td>`).join('') +
+              '</tr>').join('')
+          : `<tr><td colspan="${headers.length + 1}" class="text-center text-muted py-4">ยังไม่มีข้อมูลในเอกสารนี้</td></tr>`;
+
+        tableHtml = `<div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle mb-0 doc-table">
+            <thead>${head}</thead><tbody>${body}</tbody>
+          </table></div>`;
+      }
+
+      document.getElementById('docSheet').innerHTML = `
+        <div class="doc-header">
+          <div class="doc-kicker">รหัสหัวข้อ ${escapeHtml(node.id)}</div>
+          <h4 class="doc-title">${escapeHtml(node.title)}</h4>
+          ${node.note ? `<div class="doc-note">${escapeHtml(node.note)}</div>` : ''}
+          <div class="doc-meta">
+            <span><i class="bi bi-table me-1"></i>ชีตข้อมูล: ${escapeHtml(node.sheet_name || '-')}</span>
+            <span><i class="bi bi-list-ol me-1"></i>จำนวนรายการ: ${rows.length}</span>
+          </div>
+        </div>
+        ${tableHtml}
+        <div class="doc-footer">พิมพ์จากระบบ EMOSS · ${new Date().toLocaleString('th-TH')}</div>
+      `;
+    }
+
+    function renderDocNotice(node, message) {
+      renderBreadcrumb(node);
+      document.getElementById('docSheet').innerHTML = `
+        <div class="doc-header">
+          <div class="doc-kicker">รหัสหัวข้อ ${escapeHtml(node.id)}</div>
+          <h4 class="doc-title">${escapeHtml(node.title)}</h4>
+        </div>
+        <div class="p-5 text-center text-muted">
+          <i class="bi bi-file-earmark-x fs-3 d-block mb-2"></i>${escapeHtml(message)}
+        </div>`;
+    }
+
+    function printDoc() {
+      if (!currentDocNode) return;
+      window.print();
+    }
+
+    function exportDocExcel() {
+      if (!currentDocNode) return;
+      if (!currentDocHeaders.length) {
+        return showAlertModal('warning', 'ไม่มีข้อมูล', 'เอกสารนี้ยังไม่มีหัวข้อคอลัมน์สำหรับส่งออก');
+      }
+      const ws = XLSX.utils.aoa_to_sheet([currentDocHeaders, ...currentDocRows]);
+      const wb = XLSX.utils.book_new();
+      const safeSheet = String(currentDocNode.sheet_name || 'Document').replace(/[\\\/\?\*\[\]:]/g, ' ').substring(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, safeSheet || 'Document');
+      XLSX.writeFile(wb, `${currentDocNode.title || 'Document'}.xlsx`);
+    }
+
+    function editCurrentDoc() {
+      if (!currentDocNode || !currentDocNode.sheet_name) {
+        return showAlertModal('warning', 'แก้ไขไม่ได้', 'หัวข้อนี้ยังไม่ได้ผูกชีตข้อมูล');
+      }
+      const sel = document.getElementById('sheetSelector');
+      const exists = Array.from(sel.options).some(o => o.value === currentDocNode.sheet_name);
+      if (!exists) {
+        return showAlertModal('warning', 'ไม่พบชีตข้อมูล', `ไม่พบชีต "${currentDocNode.sheet_name}" กรุณาตรวจสอบการตั้งค่าเมนู`);
+      }
+      setActiveNav('dataView');
+      sel.value = currentDocNode.sheet_name;
+      loadCurrentSheet();
+    }
+
+    // ===== หน้าตั้งค่า (Config) =====
+    function openConfigPage(btnEl) {
+      let btn = btnEl;
+      if (!btn) {
+        btn = Array.from(document.querySelectorAll('.sidebar-link'))
+          .find(l => (l.getAttribute('onclick') || '').indexOf('openConfigPage') >= 0) || null;
+      }
+      switchPage('configView', btn);
+      loadConfigSheetHeaders();
+    }
+
+    function collectConfigTable() {
+      const rows = [];
+      document.querySelectorAll('#configMenuBody tr').forEach(tr => {
+        if (!tr.querySelector('[data-field="id"]')) return;
+        const field = name => {
+          const el = tr.querySelector(`[data-field="${name}"]`);
+          return el ? String(el.value).trim() : '';
+        };
+        rows.push({
+          id: field('id'),
+          parent_id: field('parent_id'),
+          title: field('title'),
+          sheet_name: field('sheet_name'),
+          icon: field('icon') || 'bi-folder2',
+          sort: Number(field('sort')) || rows.length + 1,
+          note: field('note')
+        });
+      });
+      return rows;
+    }
+
+    function renderConfigTable(rows) {
+      configRows = (rows || []).map(r => Object.assign({}, r));
+      const tbody = document.getElementById('configMenuBody');
+
+      if (!configRows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">ยังไม่มีหัวข้อ — กด "เพิ่มหัวข้อหลัก" เพื่อเริ่มต้น</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = configRows.map((r, idx) => {
+        const parentOptions = ['<option value="">— เป็นหัวข้อหลัก —</option>']
+          .concat(configRows.filter(o => o.id !== r.id).map(o =>
+            `<option value="${escapeAttr(o.id)}"${o.id === r.parent_id ? ' selected' : ''}>` +
+            `${escapeHtml(o.id)} · ${escapeHtml(o.title)}</option>`))
+          .join('');
+
+        return `<tr>
+          <td><input class="form-control form-control-sm" data-field="id" value="${escapeAttr(r.id)}"></td>
+          <td><select class="form-select form-select-sm" data-field="parent_id">${parentOptions}</select></td>
+          <td><input class="form-control form-control-sm" data-field="title" value="${escapeAttr(r.title)}"></td>
+          <td><input class="form-control form-control-sm" data-field="sheet_name" list="sheetNameOptions"
+                     value="${escapeAttr(r.sheet_name)}" placeholder="ว่าง = ไม่ผูกชีต"></td>
+          <td><input class="form-control form-control-sm" data-field="icon" value="${escapeAttr(r.icon)}" placeholder="bi-folder2"></td>
+          <td><input type="number" class="form-control form-control-sm" data-field="sort" value="${Number(r.sort) || idx + 1}"></td>
+          <td><input class="form-control form-control-sm" data-field="note" value="${escapeAttr(r.note)}"></td>
+          <td class="text-nowrap">
+            <button class="btn btn-outline-primary btn-sm py-0 px-1" title="เพิ่มหัวข้อย่อย" onclick="addConfigRow(${idx})">
+              <i class="bi bi-node-plus"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="ลบหัวข้อ" onclick="deleteConfigRow(${idx})">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function nextConfigId(parentId, rows) {
+      const siblings = rows.filter(r => (r.parent_id || '') === (parentId || ''));
+      let max = 0;
+      siblings.forEach(r => {
+        const parts = String(r.id).split('.');
+        const n = Number(parts[parts.length - 1]);
+        if (!isNaN(n) && n > max) max = n;
+      });
+      return (parentId ? parentId + '.' : '') + (max + 1);
+    }
+
+    function addConfigRow(parentIdx) {
+      const rows = collectConfigTable();
+      const parent = (parentIdx === '' || parentIdx === null) ? null : rows[parentIdx];
+      const parentId = parent ? parent.id : '';
+      const siblings = rows.filter(r => (r.parent_id || '') === parentId);
+      const nextSort = siblings.reduce((max, r) => Math.max(max, Number(r.sort) || 0), 0) + 1;
+
+      rows.push({
+        id: nextConfigId(parentId, rows),
+        parent_id: parentId,
+        title: parent ? 'หัวข้อย่อยใหม่' : 'หัวข้อหลักใหม่',
+        sheet_name: '',
+        icon: parent ? 'bi-file-earmark-text' : 'bi-folder2',
+        sort: nextSort,
+        note: ''
+      });
+      renderConfigTable(rows);
+    }
+
+    function deleteConfigRow(idx) {
+      const rows = collectConfigTable();
+      const row = rows[idx];
+      if (!row) return;
+
+      if (rows.some(r => r.parent_id === row.id)) {
+        return showAlertModal('warning', 'ลบไม่ได้', `"${row.title}" มีหัวข้อย่อยอยู่ กรุณาลบหัวข้อย่อยก่อน`);
+      }
+
+      showConfirmModal('ลบหัวข้อ', `ต้องการลบ "${row.title}" ออกจากโครงสร้างเมนูใช่หรือไม่?\n(ชีตข้อมูลจะไม่ถูกลบ และจะมีผลเมื่อกด "บันทึกโครงสร้าง")`, () => {
+        rows.splice(idx, 1);
+        renderConfigTable(rows);
+      });
+    }
+
+    function saveMenuConfig() {
+      const rows = collectConfigTable();
+      if (!rows.length) {
+        return showAlertModal('warning', 'ไม่มีข้อมูล', 'กรุณาเพิ่มหัวข้ออย่างน้อย 1 รายการ');
+      }
+
+      showToast('กำลังบันทึกโครงสร้างเมนู...', true);
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'error') {
+            showToast('ยกเลิก', false);
+            return showAlertModal('warning', 'บันทึกไม่สำเร็จ', res.message);
+          }
+          applyMenuConfig(res);
+          showAlertModal('success', 'บันทึกสำเร็จ', 'อัปเดตโครงสร้างเมนูและเมนูด้านซ้ายเรียบร้อยแล้ว');
+        })
+        .withFailureHandler(handleScriptError)
+        .saveMenuConfig(rows);
+    }
+
+    function loadConfigSheetHeaders() {
+      const name = document.getElementById('configSheetSelector').value;
+      const input = document.getElementById('headerConfigInput');
+      const hint = document.getElementById('headerConfigHint');
+
+      if (!name) {
+        input.value = '';
+        hint.textContent = 'ยังไม่มีชีตข้อมูล — สร้างชีตใหม่ได้ที่การ์ดด้านขวา';
+        return;
+      }
+
+      hint.textContent = 'กำลังโหลด...';
+      google.script.run
+        .withSuccessHandler(res => {
+          input.value = (res.headers || []).join(', ');
+          hint.textContent = `ชีต "${res.sheetName}" มี ${res.rows.length} รายการ · ${(res.headers || []).length} คอลัมน์`;
+        })
+        .withFailureHandler(handleScriptError)
+        .getSheetData(name);
+    }
+
     function saveCustomHeaders() {
+      const name = document.getElementById('configSheetSelector').value;
+      if (!name) {
+        return showAlertModal('warning', 'ยังไม่ได้เลือกชีต', 'กรุณาเลือกชีตข้อมูลก่อน');
+      }
+
       const rawText = document.getElementById('headerConfigInput').value;
       const headersArray = rawText.split(',').map(s => s.trim()).filter(s => s !== '');
-      if (headersArray.length === 0) return showAlertModal('warning', 'ยังไม่ได้กรอกข้อมูล', 'กรุณาระบุชื่อคอลัมน์อย่างน้อย 1 หัวข้อ');
+      if (headersArray.length === 0) {
+        return showAlertModal('warning', 'ยังไม่ได้กรอกข้อมูล', 'กรุณาระบุชื่อคอลัมน์อย่างน้อย 1 หัวข้อ');
+      }
 
       showToast('กำลังบันทึกหัวข้อ...', true);
       google.script.run
         .withSuccessHandler(res => {
-          if (res.status === 'error') return showAlertModal('warning', 'บันทึกไม่สำเร็จ', res.message);
-          loadCurrentSheet();
+          if (res.status === 'error') {
+            showToast('ยกเลิก', false);
+            return showAlertModal('warning', 'บันทึกไม่สำเร็จ', res.message);
+          }
+          loadConfigSheetHeaders();
+          if (currentSheet === name) loadCurrentSheet();
           showAlertModal('success', 'บันทึกสำเร็จ', 'อัปเดตหัวข้อคอลัมน์เรียบร้อยแล้ว');
         })
         .withFailureHandler(handleScriptError)
-        .updateHeaders(currentSheet, headersArray);
+        .updateHeaders(name, headersArray);
+    }
+
+    function createSheetFromConfig() {
+      const input = document.getElementById('newSheetName');
+      const name = input.value.trim();
+      if (!name) return showAlertModal('warning', 'ยังไม่ได้กรอกชื่อ', 'กรุณาระบุชื่อชีตข้อมูลใหม่');
+
+      showToast('กำลังสร้างชีต...', true);
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'error') {
+            showToast('ยกเลิก', false);
+            return showAlertModal('warning', 'สร้างไม่สำเร็จ', res.message);
+          }
+          input.value = '';
+          const sheets = res.sheets || [];
+          renderSheetOptions(sheets);
+          renderSheetSelector(sheets, currentSheet || res.sheetName);
+          document.getElementById('configSheetSelector').value = res.sheetName;
+          loadConfigSheetHeaders();
+          showAlertModal('success', 'สร้างสำเร็จ', `สร้างชีต "${res.sheetName}" แล้ว\nกลับไปผูกชีตนี้กับหัวข้อในตารางโครงสร้างเมนูด้านบน`);
+        })
+        .withFailureHandler(handleScriptError)
+        .createNewSheet(name, []);
     }
 
     function renderForm(headers) {
@@ -1250,7 +1865,8 @@
       const wsData = [currentHeaders, ...currentRows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, currentSheet || 'Data');
+      const safeSheet = String(currentSheet || 'Data').replace(/[\\\/\?\*\[\]:]/g, ' ').substring(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, safeSheet || 'Data');
       XLSX.writeFile(wb, `${currentSheet || 'Export'}.xlsx`);
     }
   </script>

@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --sidebar-bg: #014d3e;
+      --sidebar-hover: #016d53;
+      --primary: #016d53;
+      --primary-dark: #015a44;
+      --sidebar-border: #0a7a5f;
+    }
+
+    * {
+      font-family: 'Segoe UI', 'Prompt', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      background: #f1f5f9;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    /* ===== Layout ===== */
+    .app-wrapper {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar-bg);
+      color: #cbd5e1;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 1040;
+      transition: transform 0.25s ease;
+    }
+
+    .main-area {
+      margin-left: 260px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .content {
+      padding: 24px;
+      flex: 1;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      color: #94a3b8;
+      font-size: 0.72rem;
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      padding: 8px 12px 6px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      font-family: inherit;
+      margin-bottom: 4px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .sidebar-link i {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      width: 20px;
+      text-align: center;
+      transition: color 0.15s ease;
+    }
+
+    .sidebar-link:hover {
+      background: var(--sidebar-hover);
+      color: #fff;
+    }
+
+    .sidebar-link:hover i,
+    .sidebar-link.active i {
+      color: #a7f3d0;
+    }
+
+    .sidebar-link.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: inset 3px 0 0 0 #0fbb89;
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    /* ===== Topbar ===== */
+    .menu-toggle {
+      border: none;
+      background: transparent;
+      color: #334155;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+
+    .export-btn {
+      background: #059669;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .export-btn:hover {
+      background: #047857;
+      color: #fff;
+    }
+
+    /* ===== Cards & Stat ===== */
+    .panel-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+
+    .panel-card .panel-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eef2f7;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-card .panel-body {
+      padding: 20px;
+    }
+
+    .panel-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #0f172a;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title .step-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+
+    .stat-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .stat-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    /* ===== Buttons ===== */
+    .btn-primary-brand {
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary-brand:hover {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
+      color: #fff;
+    }
+
+    /* ===== Table ===== */
+    #mainTable th {
+      white-space: nowrap;
+      background: var(--sidebar-bg);
+      color: #e2e8f0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 10px 12px;
+      border-color: var(--sidebar-hover);
+    }
+
+    #mainTable td {
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+
+    #mainTable tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    td.editable-cell {
+      cursor: pointer;
+      transition: background-color 0.2s, box-shadow 0.2s;
+    }
+
+    td.editable-cell:hover {
+      background-color: #eef2ff !important;
+      outline: 1px dashed var(--primary);
+    }
+
+    td.editable-cell:focus {
+      background-color: #fef9c3 !important;
+      outline: 2px solid #facc15;
+      font-weight: bold;
+    }
+
+    tr.highlight-new td {
+      animation: highlightFade 3s ease-in-out;
+    }
+
+    @keyframes highlightFade {
+      0% { background-color: #d1fae5; }
+      100% { background-color: transparent; }
+    }
+
+    .row-num {
+      color: #94a3b8;
+      background: #f8fafc !important;
+      font-size: 0.8rem;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    /* ===== Toast ===== */
+    #saveStatusToast {
+      border-radius: 50rem;
+      font-size: 0.85rem;
+      box-shadow: 0 6px 16px rgba(15,23,42,0.18);
+    }
+
+    /* ===== Modal แจ้งเตือน ===== */
+    .alert-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 16px;
+    }
+
+    .alert-modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .alert-modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+      overflow: hidden;
+      transform: translateY(12px) scale(0.97);
+      transition: transform 0.2s ease;
+      text-align: center;
+    }
+
+    .alert-modal-overlay.show .alert-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .alert-modal-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      margin: 24px auto 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.9rem;
+    }
+
+    .alert-modal-icon.success {
+      background: #d1fae5;
+      color: #059669;
+    }
+
+    .alert-modal-icon.warning {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .alert-modal-icon.error {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .alert-modal-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #0f172a;
+      padding: 8px 24px 0;
+    }
+
+    .alert-modal-msg {
+      font-size: 0.9rem;
+      color: #475569;
+      padding: 6px 24px 16px;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .alert-modal-btn {
+      width: 100%;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-family: inherit;
+    }
+
+    .alert-modal-btn:hover {
+      background: var(--primary-dark);
+    }
+
+    /* ===== Confirm Modal ===== */
+    .confirm-modal-actions {
+      display: flex;
+      gap: 0;
+      border-top: 1px solid #eef2f7;
+      margin-top: 4px;
+    }
+
+    .confirm-modal-btn {
+      flex: 1;
+      border: none;
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .confirm-modal-btn + .confirm-modal-btn {
+      border-left: 1px solid #eef2f7;
+    }
+
+    .confirm-modal-btn.yes {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .confirm-modal-btn.yes:hover {
+      background: var(--primary-dark);
+    }
+
+    .confirm-modal-btn.no:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    /* ===== Prompt Modal (กรอกข้อมูล) ===== */
+    .prompt-modal-body {
+      padding: 20px 24px 16px;
+    }
+
+    .prompt-modal-label {
+      display: block;
+      text-align: left;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .prompt-modal-input {
+      width: 100%;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .prompt-modal-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(1, 109, 83, 0.15);
+    }
+
+    .prompt-modal-actions {
+      display: flex;
+      gap: 10px;
+      padding: 0 24px 20px;
+    }
+
+    .prompt-modal-btn {
+      flex: 1;
+      border: none;
+      border-radius: 10px;
+      padding: 11px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .prompt-modal-btn.yes {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .prompt-modal-btn.yes:hover {
+      background: var(--primary-dark);
+    }
+
+    .prompt-modal-btn.no {
+      background: #fff;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .prompt-modal-btn.no:hover {
+      background: #f1f5f9;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 991px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-area {
+        margin-left: 0;
+      }
+      .content {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="bi bi-grid-1x2-fill"></i></div>
+      <div>
+        <div class="brand-title">EMOSS</div>
+        <div class="brand-sub">Admin Dashboard</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-label">เมนูหลัก</div>
+      <button type="button" class="sidebar-link active" onclick="switchPage('dashboardView', this)">
+        <i class="bi bi-speedometer2"></i> ภาพรวมข้อมูล
+      </button>
+      <button type="button" class="sidebar-link" onclick="switchPage('entryView', this)">
+        <i class="bi bi-pencil-square"></i> เพิ่ม / นำเข้าข้อมูล
+      </button>
+      <button type="button" class="sidebar-link" onclick="switchPage('dataView', this)">
+        <i class="bi bi-table"></i> จัดการฐานข้อมูล
+      </button>
+
+      <div class="nav-label mt-3">ข้อมูลอัปเดตอัตโนมัติจาก Google Sheets</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <i class="bi bi-shield-check me-1"></i> เชื่อมต่อ Google Sheets แล้ว
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <button class="menu-toggle d-lg-none" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="topbar-title">
+        แดชบอร์ดการจัดการข้อมูล
+        <span class="text-muted fw-normal fs-6 ms-2 d-none d-md-inline">ระบบฐานข้อมูลแบบ Headers ไดนามิก</span>
+      </div>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <button onclick="exportExcel()" class="btn export-btn btn-sm">
+          <i class="bi bi-file-earmark-excel me-1"></i> ดาวน์โหลด Excel
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- แถบแจ้งเตือนสถานะการบันทึก -->
+      <div id="saveStatusToast" class="position-fixed top-0 end-0 m-3 badge bg-success p-2 shadow" style="display:none; z-index:9999;">✓ บันทึกการแก้ไขแล้ว</div>
+
+      <!-- Modal แจ้งเตือนผลการทำงานแบบสวยงาม -->
+      <div id="alertModal" class="alert-modal-overlay" onclick="closeAlertModal(event)">
+        <div class="alert-modal">
+          <div class="alert-modal-icon" id="alertIcon"></div>
+          <div class="alert-modal-title" id="alertTitle"></div>
+          <div class="alert-modal-msg" id="alertMsg"></div>
+          <button type="button" class="alert-modal-btn" onclick="closeAlertModal()">ตกลง</button>
+        </div>
+      </div>
+
+      <!-- Modal ยืนยันการทำงาน (Confirm) -->
+      <div id="confirmModal" class="alert-modal-overlay" onclick="closeConfirmModal(event)">
+        <div class="alert-modal">
+          <div class="alert-modal-icon" id="confirmIcon"></div>
+          <div class="alert-modal-title" id="confirmTitle"></div>
+          <div class="alert-modal-msg" id="confirmMsg"></div>
+          <div class="confirm-modal-actions">
+            <button type="button" class="confirm-modal-btn no" onclick="closeConfirmModal()">ยกเลิก</button>
+            <button type="button" class="confirm-modal-btn yes" onclick="confirmYes()">ยืนยัน</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal กรอกข้อมูล (Prompt) -->
+      <div id="promptModal" class="alert-modal-overlay" onclick="closePromptModal(event)">
+        <div class="alert-modal" style="text-align:left;">
+          <div class="alert-modal-icon" id="promptIcon"></div>
+          <div class="alert-modal-title" id="promptTitle" style="text-align:center; padding-bottom: 4px;"></div>
+          <div class="prompt-modal-body">
+            <label class="prompt-modal-label" id="promptLabel"></label>
+            <input type="text" id="promptInput" class="prompt-modal-input" onkeydown="if(event.key==='Enter')confirmPromptYes()">
+          </div>
+          <div class="prompt-modal-actions">
+            <button type="button" class="prompt-modal-btn no" onclick="closePromptModal()">ยกเลิก</button>
+            <button type="button" class="prompt-modal-btn yes" onclick="confirmPromptYes()">ตกลง</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ส่วนภาพรวม (Dashboard) ===== -->
+      <section id="dashboardView" class="mb-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-speedometer2 me-2 text-primary"></i>ภาพรวมข้อมูล</h5>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#e6f4ef; color:#016d53;"><i class="bi bi-folder-fill"></i></div>
+              <div>
+                <div class="stat-label">หมวดหมู่งาน</div>
+                <div class="stat-value" id="statSheets">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#ecfdf5; color:#059669;"><i class="bi bi-database-fill"></i></div>
+              <div>
+                <div class="stat-label">รายการข้อมูล</div>
+                <div class="stat-value" id="statRows">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#d1fae5; color:#047857;"><i class="bi bi-list-columns"></i></div>
+              <div>
+                <div class="stat-label">จำนวนคอลัมน์</div>
+                <div class="stat-value" id="statCols">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fee2e2; color:#dc2626;"><i class="bi bi-layers-fill"></i></div>
+              <div>
+                <div class="stat-label">คอลัมน์ที่ใช้งาน</div>
+                <div class="stat-value" style="font-size:1.1rem; padding-top:6px;" id="statPct">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        </section>
+
+      <!-- ===== ส่วนเพิ่ม / นำเข้าข้อมูล ===== -->
+      <section id="entryView" class="mb-4" style="display:none;">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-pencil-square me-2 text-primary"></i>เพิ่ม / นำเข้าข้อมูล</h5>
+
+        <div class="row g-4">
+          <!-- ฝั่งซ้าย: กรอกข้อมูล -->
+          <div class="col-lg-7">
+            <div class="panel-card h-100">
+              <div class="panel-head">
+                <div class="panel-title"><span class="step-badge">1</span> กรอกข้อมูลเพิ่มรายแถว</div>
+              </div>
+              <div class="panel-body">
+                <form id="dynamicForm" onsubmit="handleFormSubmit(event)">
+                  <div id="formInputs" class="row g-2 mb-3"></div>
+                  <button type="submit" id="btnSaveRow" class="btn btn-primary-brand btn-sm w-100">
+                    <i class="bi bi-plus-circle me-1"></i>เพิ่มรายการลงตาราง
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- ฝั่งขวา: นำเข้า Excel -->
+          <div class="col-lg-5">
+            <div class="panel-card h-100">
+              <div class="panel-head">
+                <div class="panel-title"><span class="step-badge">2</span> นำเข้าจากไฟล์ Excel</div>
+              </div>
+              <div class="panel-body">
+                <input type="file" id="excelFile" class="form-control mb-3" accept=".xlsx, .xls, .csv">
+
+                <div class="form-check small mb-2">
+                  <input class="form-check-input" type="radio" name="importMode" id="modeAppend" value="append" checked>
+                  <label class="form-check-label" for="modeAppend">
+                    <strong>นำเข้าต่อท้ายข้อมูลเดิม</strong>
+                    <span class="text-muted d-block">จับคู่คอลัมน์อัตโนมัติ</span>
+                  </label>
+                </div>
+                <div class="form-check small mb-3">
+                  <input class="form-check-input" type="radio" name="importMode" id="modeOverwrite" value="overwrite">
+                  <label class="form-check-label text-danger" for="modeOverwrite">
+                    <strong>ล้างตารางเดิม</strong>
+                    <span class="text-muted d-block">ใช้หัวข้อตามไฟล์ Excel นี้ 100%</span>
+                  </label>
+                </div>
+
+                <button onclick="handleImportExcel()" class="btn btn-outline-success btn-sm w-100">
+                  <i class="bi bi-upload me-1"></i>อัปโหลดและนำเข้าข้อมูล
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ส่วนจัดการฐานข้อมูล ===== -->
+      <section id="dataView" style="display:none;">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-table me-2 text-primary"></i>จัดการฐานข้อมูล</h5>
+
+        <div class="panel-card mb-4">
+          <div class="panel-head">
+            <div class="panel-title"><i class="bi bi-folder-check text-primary"></i> เลือกหมวดหมู่งาน</div>
+            <button onclick="promptNewSheet()" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-plus-lg me-1"></i>สร้างหมวดหมู่งานใหม่
+            </button>
+          </div>
+          <div class="panel-body d-flex flex-wrap gap-2 align-items-center">
+            <select id="sheetSelector" class="form-select" style="max-width: 360px;" onchange="loadCurrentSheet()"></select>
+            <span class="text-muted small">เลือกหมวดหมู่เพื่อดูและจัดการข้อมูล</span>
+          </div>
+        </div>
+
+        <!-- ตั้งค่าหัวข้อคอลัมน์ -->
+        <div class="panel-card mb-4">
+          <div class="panel-head">
+            <div class="panel-title"><i class="bi bi-list-columns text-primary"></i> หัวข้อคอลัมน์ (Headers Config)</div>
+            <button onclick="saveCustomHeaders()" class="btn btn-dark btn-sm">
+              <i class="bi bi-check-lg me-1"></i>บันทึกการตั้งค่า
+            </button>
+          </div>
+          <div class="panel-body">
+            <label class="form-label small text-muted">ระบุชื่อหัวข้อแต่ละคอลัมน์ คั่นด้วยเครื่องหมายลูกน้ำ ( , )</label>
+            <input type="text" id="headerConfigInput" class="form-control"
+                   placeholder="เช่น ปีการศึกษา, MD รับเข้า (คน), MD ตามแผน (%), PMD รับเข้า (คน)">
+            <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>การเปลี่ยนหัวข้อจะอัปเดตฟอร์มกรอกข้อมูลและตารางทั้งระบบทันที</div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <div class="panel-title">
+              <i class="bi bi-database-check text-primary"></i> ข้อมูลทั้งหมด
+              <span id="recordCountBadge" class="badge bg-primary ms-1">0 รายการ</span>
+            </div>
+            <span class="text-muted small">💡 <em>คลิกที่ตัวเลขหรือข้อความในตารางเพื่อพิมพ์แก้ไขได้ทันที</em></span>
+            <input type="text" id="searchInput" class="form-control form-control-sm search-box ms-auto"
+                   placeholder="🔍 ค้นหาข้อมูลในตาราง..." onkeyup="filterTable()">
+          </div>
+          <div class="panel-body table-responsive p-0">
+            <table class="table table-bordered table-hover table-sm text-center align-middle mb-0" id="mainTable">
+              <thead id="tableHead"></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+<script>
+    let currentSheet = '';
+    let currentHeaders = [];
+    let currentRows = [];
+    let highlightLastRow = false;
+
+    // ===== Sidebar navigation (สลับหน้า ทีละหน้า) =====
+    const pageIds = ['dashboardView', 'entryView', 'dataView'];
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function switchPage(id, btnEl) {
+      // ซ่อนทุกหน้า แล้วแสดงเฉพาะหน้าที่เลือก
+      pageIds.forEach(pid => {
+        document.getElementById(pid).style.display = (pid === id) ? 'block' : 'none';
+      });
+      // อัปเดตสถานะ active บนเมนู sidebar
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      // ปิด sidebar บนจอเล็ก
+      if (window.innerWidth < 992) toggleSidebar();
+    }
+
+    function updateStats() {
+      document.getElementById('statSheets').textContent =
+        document.getElementById('sheetSelector').options.length || 0;
+      document.getElementById('statRows').textContent = currentRows.length || 0;
+      document.getElementById('statCols').textContent = currentHeaders.length || 0;
+      const total = currentHeaders.length * currentRows.length;
+      const filled = currentRows.reduce((n, r) => {
+        let c = 0;
+        currentHeaders.forEach((_, i) => { if (r[i] !== undefined && String(r[i]).trim() !== '') c++; });
+        return n + c;
+      }, 0);
+      const pct = total > 0 ? Math.round((filled / total) * 100) + '%' : '-';
+      const pctEl = document.getElementById('statPct');
+      pctEl.textContent = pct;
+      const badColors = { red: { bg: '#fee2e2', fg: '#dc2626' }, amber: { bg: '#fef3c7', fg: '#d97706' }, green: { bg: '#ecfdf5', fg: '#059669' } };
+      const v = total > 0 ? (filled / total) : null;
+      const palette = v === null ? badColors.red : v >= 0.5 ? badColors.green : v >= 0.25 ? badColors.amber : badColors.red;
+      pctEl.closest('.stat-icon').style.background = palette.bg;
+      pctEl.closest('.stat-icon').style.color = palette.fg;
+    }
+
+    window.onload = () => {
+      google.script.run
+        .withSuccessHandler(sheets => {
+          if (sheets && sheets.length > 0) {
+            renderSheetSelector(sheets, sheets[0]);
+            loadCurrentSheet();
+          } else {
+            updateStats();
+          }
+        })
+        .withFailureHandler(handleScriptError)
+        .getSheetList();
+    };
+
+    // ฟังก์ชันดักจับ Error เพื่อไม่ให้หน้าเว็บค้าง
+    function handleScriptError(err) {
+      const toast = document.getElementById('saveStatusToast');
+      toast.style.display = 'none';
+      showAlertModal('error', 'เกิดข้อผิดพลาด', 'เกิดข้อผิดพลาดจากระบบ:\n' + (err.message || err));
+      console.error(err);
+    }
+
+    function showToast(msg, isSaving = false) {
+      const toast = document.getElementById('saveStatusToast');
+      toast.textContent = msg;
+      toast.className = `position-fixed top-0 end-0 m-3 badge ${isSaving ? 'bg-warning text-dark' : 'bg-success'} p-2 shadow`;
+      toast.style.display = 'block';
+      if (!isSaving) {
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+      }
+    }
+
+    // ===== Modal แจ้งเตือนสวยงาม =====
+    const alertIcons = {
+      success: '<i class="bi bi-check-circle-fill"></i>',
+      warning: '<i class="bi bi-exclamation-triangle-fill"></i>',
+      error:   '<i class="bi bi-x-octagon-fill"></i>',
+      info:    '<i class="bi bi-info-circle-fill"></i>'
+    };
+
+    function showAlertModal(type, title, msg) {
+      const overlay = document.getElementById('alertModal');
+      document.getElementById('alertIcon').className = `alert-modal-icon ${type}`;
+      document.getElementById('alertIcon').innerHTML = alertIcons[type] || alertIcons.info;
+      document.getElementById('alertTitle').textContent = title;
+      document.getElementById('alertMsg').textContent = msg;
+      overlay.classList.add('show');
+    }
+
+    function closeAlertModal(event) {
+      // ถ้ากดที่พื้นหลังสีเข้ม (นอกตัว modal) ปิดด้วย
+      if (event && event.target && event.target.id !== 'alertModal') return;
+      document.getElementById('alertModal').classList.remove('show');
+    }
+
+    // ===== Confirm Modal =====
+    let confirmModalCallback = null;
+
+    function showConfirmModal(title, msg, onConfirm) {
+      document.getElementById('confirmIcon').className = 'alert-modal-icon warning';
+      document.getElementById('confirmIcon').innerHTML = alertIcons.warning;
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMsg').textContent = msg;
+      confirmModalCallback = onConfirm || null;
+      document.getElementById('confirmModal').classList.add('show');
+    }
+
+    function closeConfirmModal(event) {
+      if (event && event.target && event.target.id !== 'confirmModal') return;
+      document.getElementById('confirmModal').classList.remove('show');
+      confirmModalCallback = null;
+    }
+
+    function confirmYes() {
+      document.getElementById('confirmModal').classList.remove('show');
+      const cb = confirmModalCallback;
+      confirmModalCallback = null;
+      if (typeof cb === 'function') cb();
+    }
+
+    // ===== Prompt Modal =====
+    let promptModalCallback = null;
+
+    function showPromptModal(title, label, defaultValue, onConfirm) {
+      document.getElementById('promptIcon').className = 'alert-modal-icon info';
+      document.getElementById('promptIcon').innerHTML = alertIcons.info;
+      document.getElementById('promptTitle').textContent = title;
+      document.getElementById('promptLabel').textContent = label;
+      const input = document.getElementById('promptInput');
+      input.value = defaultValue || '';
+      promptModalCallback = onConfirm || null;
+      document.getElementById('promptModal').classList.add('show');
+      input.focus();
+      input.select();
+    }
+
+    function closePromptModal(event) {
+      if (event && event.target && event.target.id !== 'promptModal') return;
+      document.getElementById('promptModal').classList.remove('show');
+      promptModalCallback = null;
+    }
+
+    function confirmPromptYes() {
+      const input = document.getElementById('promptInput');
+      const value = input.value.trim();
+      document.getElementById('promptModal').classList.remove('show');
+      const cb = promptModalCallback;
+      promptModalCallback = null;
+      if (typeof cb === 'function') cb(value);
+    }
+
+    // แปลง string เป็น HTML (กัน XSS จากข้อมูลผู้ใช้)
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+
+    function renderSheetSelector(sheets, selected) {
+      const sel = document.getElementById('sheetSelector');
+      sel.innerHTML = '';
+      sheets.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === selected) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      currentSheet = sel.value;
+    }
+
+    function loadCurrentSheet() {
+      const sel = document.getElementById('sheetSelector');
+      currentSheet = sel.value || currentSheet;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          currentSheet = res.sheetName;
+          currentHeaders = res.headers || [];
+          currentRows = res.rows || [];
+
+          document.getElementById('headerConfigInput').value = currentHeaders.join(', ');
+          document.getElementById('recordCountBadge').textContent = `${currentRows.length} รายการ`;
+
+          renderForm(currentHeaders);
+          renderTable(currentHeaders, currentRows);
+          updateStats();
+        })
+        .withFailureHandler(handleScriptError)
+        .getSheetData(currentSheet);
+    }
+
+    function promptNewSheet() {
+      showPromptModal('สร้างหมวดหมู่งานใหม่', 'ชื่อหมวดหมู่งาน (เช่น การสำเร็จการศึกษา, ความพึงพอใจ):', '', function(name) {
+        if (!name) return showAlertModal('warning', 'ยังไม่ได้กรอกชื่อ', 'กรุณาระบุชื่อหมวดหมู่งานที่ต้องการสร้าง');
+
+        showToast('กำลังสร้างหมวดหมู่...', true);
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.status === 'error') {
+              showToast('ยกเลิก', false);
+              return showAlertModal('warning', 'ไม่สามารถสร้างได้', res.message);
+            }
+            renderSheetSelector(res.sheets, res.sheetName);
+            loadCurrentSheet();
+            updateStats();
+            showAlertModal('success', 'สร้างสำเร็จ', `สร้างหมวดหมู่งาน "${res.sheetName}" แล้ว`);
+            setActiveNav('dataView');
+          })
+          .withFailureHandler(handleScriptError)
+          .createNewSheet(name, []);
+      });
+    }
+
+    // ย้ายไปยังหน้า "จัดการฐานข้อมูล" พร้อมไฮไลต์เมนู
+    function setActiveNav(id) {
+      const btn = document.querySelector(`.sidebar-link[onclick*="'${id}'"]`);
+      switchPage(id, btn);
+    }
+
+    function saveCustomHeaders() {
+      const rawText = document.getElementById('headerConfigInput').value;
+      const headersArray = rawText.split(',').map(s => s.trim()).filter(s => s !== '');
+      if (headersArray.length === 0) return showAlertModal('warning', 'ยังไม่ได้กรอกข้อมูล', 'กรุณาระบุชื่อคอลัมน์อย่างน้อย 1 หัวข้อ');
+
+      showToast('กำลังบันทึกหัวข้อ...', true);
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'error') return showAlertModal('warning', 'บันทึกไม่สำเร็จ', res.message);
+          loadCurrentSheet();
+          showAlertModal('success', 'บันทึกสำเร็จ', 'อัปเดตหัวข้อคอลัมน์เรียบร้อยแล้ว');
+        })
+        .withFailureHandler(handleScriptError)
+        .updateHeaders(currentSheet, headersArray);
+    }
+
+    function renderForm(headers) {
+      const container = document.getElementById('formInputs');
+      const btn = document.getElementById('btnSaveRow');
+      container.innerHTML = '';
+
+      if (headers.length === 0) {
+        container.innerHTML = '<div class="text-muted small my-2">ยังไม่ได้กำหนดหัวข้อคอลัมน์ กรุณาตั้งค่าหัวข้อหรืออัปโหลดไฟล์ Excel ก่อน</div>';
+        btn.disabled = true;
+        return;
+      }
+
+      btn.disabled = false;
+      headers.forEach((h, index) => {
+        const safeH = escapeHtml(h);
+        container.innerHTML += `
+          <div class="col-md-6 col-xl-4">
+            <label class="form-label small fw-bold mb-1">${safeH}</label>
+            <input type="text" class="form-control form-control-sm form-field" data-idx="${index}" placeholder="กรอก ${safeH}">
+          </div>
+        `;
+      });
+    }
+
+    function renderTable(headers, rows) {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (headers.length === 0) {
+        thead.innerHTML = `<tr><th class="text-muted py-3">ยังไม่มีข้อมูลในหมวดหมู่นี้</th></tr>`;
+        return;
+      }
+
+      let hRow = '<tr><th style="width: 50px;">#</th>';
+      headers.forEach(h => hRow += `<th>${escapeHtml(h)}</th>`);
+      hRow += '<th style="width: 90px;">จัดการ</th></tr>';
+      thead.innerHTML = hRow;
+
+      if (rows.length === 0) {
+        const colCount = headers.length + 2;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-muted py-4"><i class="bi bi-inbox me-2"></i>ยังไม่มีรายการข้อมูลในหมวดหมู่นี้</td></tr>`;
+        return;
+      }
+
+      let bHtml = '';
+      rows.forEach((r, rowIndex) => {
+        const isNewRow = highlightLastRow && (rowIndex === rows.length - 1);
+        bHtml += `<tr class="${isNewRow ? 'highlight-new' : ''}">`;
+        bHtml += `<td class="row-num">${rowIndex + 1}</td>`;
+
+        headers.forEach((_, colIndex) => {
+          const cellVal = r[colIndex] !== undefined ? r[colIndex] : '';
+          bHtml += `<td contenteditable="true" class="editable-cell"
+                        data-row="${rowIndex}" data-col="${colIndex}"
+                        onkeydown="handleCellKeydown(event, this)"
+                        onblur="handleCellBlur(this)">${escapeHtml(cellVal)}</td>`;
+        });
+
+        bHtml += `<td>
+          <button onclick="handleDeleteRow(${rowIndex})" class="btn btn-outline-danger btn-sm py-0 px-2">
+            <i class="bi bi-trash3"></i> ลบ
+          </button>
+        </td>`;
+        bHtml += '</tr>';
+      });
+      tbody.innerHTML = bHtml;
+      highlightLastRow = false;
+    }
+
+    function handleCellKeydown(e, cellEl) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cellEl.blur();
+      }
+    }
+
+    function handleCellBlur(cellEl) {
+      const rowIndex = Number(cellEl.getAttribute('data-row'));
+      const colIndex = Number(cellEl.getAttribute('data-col'));
+      const newVal = cellEl.innerText.trim();
+      const oldVal = (currentRows[rowIndex] && currentRows[rowIndex][colIndex] !== undefined)
+                     ? String(currentRows[rowIndex][colIndex]).trim()
+                     : '';
+
+      if (newVal === oldVal) return;
+
+      currentRows[rowIndex][colIndex] = newVal;
+      showToast('กำลังบันทึก...', true);
+
+      google.script.run
+        .withSuccessHandler(() => {
+          showToast('✓ บันทึกการแก้ไขแล้ว');
+          updateStats();
+        })
+        .withFailureHandler(handleScriptError)
+        .updateSingleCell(currentSheet, rowIndex, colIndex, newVal);
+    }
+
+    function handleDeleteRow(rowIndex) {
+      showConfirmModal('ยืนยันการลบ', `ต้องการลบข้อมูลแถวที่ ${rowIndex + 1} ใช่หรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้`, () => {
+        showToast('กำลังลบรายการ...', true);
+        google.script.run
+          .withSuccessHandler(() => {
+            currentRows.splice(rowIndex, 1);
+            document.getElementById('recordCountBadge').textContent = `${currentRows.length} รายการ`;
+            renderTable(currentHeaders, currentRows);
+            updateStats();
+            showAlertModal('success', 'ลบสำเร็จ', `ลบข้อมูลแถวที่ ${rowIndex + 1} เรียบร้อยแล้ว`);
+          })
+          .withFailureHandler(handleScriptError)
+          .deleteRowByIndex(currentSheet, rowIndex);
+      });
+    }
+
+    function filterTable() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const trs = document.querySelectorAll('#tableBody tr');
+      trs.forEach(tr => {
+        const text = tr.innerText.toLowerCase();
+        tr.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    // แก้ไขให้แสดงผลแถวใหม่บนตารางทันทีเมื่อบันทึกเสร็จ (ไม่ต้องรอโหลดซ้ำ)
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const inputs = document.querySelectorAll('.form-field');
+      const rowData = Array.from(inputs).map(inp => inp.value.trim());
+
+      const btn = document.getElementById('btnSaveRow');
+      btn.disabled = true;
+      showToast('กำลังเพิ่มรายการ...', true);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          document.getElementById('dynamicForm').reset();
+
+          currentRows.push(rowData);
+          highlightLastRow = true;
+          document.getElementById('recordCountBadge').textContent = `${currentRows.length} รายการ`;
+          renderTable(currentHeaders, currentRows);
+          updateStats();
+
+          showAlertModal('success', 'เพิ่มสำเร็จ', 'เพิ่มรายการใหม่ลงตารางเรียบร้อยแล้ว');
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          handleScriptError(err);
+        })
+        .addRecord(currentSheet, rowData);
+    }
+
+    function handleImportExcel() {
+      const fileInput = document.getElementById('excelFile');
+      if (!fileInput.files.length) return showAlertModal('warning', 'ยังไม่ได้เลือกไฟล์', 'กรุณาเลือกไฟล์ Excel ก่อน');
+
+      const mode = document.querySelector('input[name="importMode"]:checked').value;
+      const reader = new FileReader();
+
+      showToast('กำลังนำเข้าข้อมูล...', true);
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const firstSheet = wb.SheetNames[0];
+
+        const rawArray = XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1, defval: "" });
+        if (rawArray.length === 0) return showAlertModal('warning', 'ไม่มีข้อมูล', 'ไม่พบข้อมูลในไฟล์ Excel ที่เลือก');
+
+        const excelHeaders = rawArray[0].map(h => String(h).trim());
+        const excelRows = rawArray.slice(1).filter(r => r.some(cell => String(cell).trim() !== ''));
+
+        google.script.run
+          .withSuccessHandler(res => {
+            fileInput.value = '';
+            loadCurrentSheet();
+            showAlertModal('success', 'นำเข้าสำเร็จ', `นำเข้าข้อมูลสำเร็จ ${res.count} รายการ`);
+          })
+          .withFailureHandler(handleScriptError)
+          .importExcelData(currentSheet, excelHeaders, excelRows, mode);
+      };
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+
+    function exportExcel() {
+      if (currentHeaders.length === 0) return showAlertModal('warning', 'ไม่มีข้อมูล', 'ยังไม่มีข้อมูลในหมวดหมู่นี้สำหรับส่งออก');
+      const wsData = [currentHeaders, ...currentRows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, currentSheet || 'Data');
+      XLSX.writeFile(wb, `${currentSheet || 'Export'}.xlsx`);
+    }
+  </script>
+</body>
+</html>

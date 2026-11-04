@@ -6,6 +6,7 @@
 - Backend: `รหัส.gs` (Apps Script)
 - ที่เก็บข้อมูล: Google Sheets 1 ชีต = 1 เอกสาร/หัวข้อใบ
 - โครงสร้างเมนู: ชีตระบบ `_MENU` (ซ่อนอัตโนมัติ)
+- Login: Username/Password พร้อม role `admin`, `employee`, `user` — [วิธีสร้าง admin แรกและติดตั้ง](docs/auth-setup.md)
 
 ## ไฟล์ในโปรเจกต์
 

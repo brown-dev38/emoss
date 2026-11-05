@@ -1195,13 +1195,28 @@
             </div>
             <span class="text-muted small">💡 <em>คลิกที่ตัวเลขหรือข้อความในตารางเพื่อพิมพ์แก้ไขได้ทันที</em></span>
             <input type="text" id="searchInput" class="form-control form-control-sm search-box ms-auto"
-                   placeholder="🔍 ค้นหาข้อมูลในตาราง..." onkeyup="filterTable()">
+                   placeholder="🔍 ค้นหาข้อมูลในตาราง..." oninput="filterTable()">
           </div>
           <div class="panel-body table-responsive p-0">
             <table class="table table-bordered table-hover table-sm text-center align-middle mb-0" id="mainTable">
               <thead id="tableHead"></thead>
               <tbody id="tableBody"></tbody>
             </table>
+          </div>
+          <div class="panel-body d-flex flex-wrap align-items-center gap-3 border-top">
+            <label class="d-flex align-items-center gap-2 small mb-0" for="tablePageSize">แถวต่อหน้า
+              <select id="tablePageSize" class="form-select form-select-sm w-auto" onchange="changeTablePageSize(this.value)">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <span id="tablePageInfo" class="text-muted small" aria-live="polite">ไม่มีข้อมูล</span>
+            <nav class="d-flex align-items-center gap-2 ms-auto" aria-label="หน้าตารางข้อมูล">
+              <button type="button" id="tablePrevPage" class="btn btn-outline-secondary btn-sm" onclick="changeTablePage(-1)" disabled>ก่อนหน้า</button>
+              <span id="tablePageNumber" class="small">หน้า 1 / 1</span>
+              <button type="button" id="tableNextPage" class="btn btn-outline-secondary btn-sm" onclick="changeTablePage(1)" disabled>ถัดไป</button>
+            </nav>
           </div>
         </div>
       </section>
@@ -1354,6 +1369,9 @@
       document.getElementById('loginSubmit').textContent = 'เข้าสู่ระบบ';
       document.getElementById('signedInUser').textContent = '';
       currentSheet = ''; currentHeaders = []; currentRows = [];
+      tablePage = 1;
+      document.getElementById('searchInput').value = '';
+      renderTable([], []);
       menuRows = []; menuTree = []; configRows = [];
       currentDocNode = null; currentDocHeaders = []; currentDocRows = [];
       accountUsers = [];
@@ -1534,6 +1552,8 @@
     let currentSheet = '';
     let currentHeaders = [];
     let currentRows = [];
+    let tablePage = 1;
+    let tablePageSize = 25;
     let highlightLastRow = false;
 
     let menuRows = [];
@@ -1824,6 +1844,8 @@
           currentSheet = res.sheetName;
           currentHeaders = res.headers || [];
           currentRows = res.rows || [];
+          tablePage = 1;
+          document.getElementById('searchInput').value = '';
 
           document.getElementById('recordCountBadge').textContent = `${currentRows.length} รายการ`;
 
@@ -1908,6 +1930,37 @@
       return isNaN(n) ? null : n;
     }
 
+    function dashboardPercentage(numerator, denominator) {
+      const top = dashToNumber(numerator);
+      const bottom = dashToNumber(denominator);
+      if (top === null || bottom === null || !Number.isFinite(top) || !Number.isFinite(bottom) || bottom === 0) return null;
+      const result = (top / bottom) * 100;
+      return Number.isFinite(result) ? result : null;
+    }
+
+    function formatChartPercentage(value) {
+      return value === null || value === undefined ? 'ไม่มีข้อมูล'
+        : Number(value).toLocaleString('th-TH', { maximumFractionDigits: 2 }) + '%';
+    }
+
+    function percentageFormulas(row) {
+      if (Array.isArray(row.chart_formulas) && row.chart_formulas.length) return row.chart_formulas;
+      return [{ label: '', numerator: row.chart_numerator || '', denominator: row.chart_denominator || '', color: '' }];
+    }
+
+    function dashboardCategoryLabels(node, headers, rows) {
+      const manual = String(node.chart_custom_labels || '').split(/\r?\n/);
+      const template = String(node.chart_label_template || '');
+      return rows.map((row, index) => {
+        if (manual[index] && manual[index].trim()) return manual[index].trim();
+        const label = template ? template.replace(/\{([^{}]+)\}/g, (_, name) => {
+          const col = headers.findIndex(header => String(header).trim() === name.trim());
+          return col >= 0 ? String(row[col] ?? '').trim() : '';
+        }).trim() : String(row[0] ?? '').trim();
+        return label || ('แถว ' + (index + 1));
+      });
+    }
+
     function renderDashboardCharts() {
       const box = document.getElementById('dashboardCharts');
       if (!box) return;
@@ -1965,6 +2018,7 @@
       const info = document.getElementById(canvasId + '_info');
       const canvas = document.getElementById(canvasId);
       if (!canvas) return;
+      if (info) info.textContent = '';
 
       const headers = (res && res.headers) || [];
       const rows = (res && res.rows) || [];
@@ -1988,10 +2042,7 @@
         return;
       }
 
-      const labels = dataRows.map((r, i) => {
-        const v = r[0] !== undefined ? String(r[0]).trim() : '';
-        return v || ('แถว ' + (i + 1));
-      });
+      const labels = dashboardCategoryLabels(node, headers, dataRows);
 
       // คอลัมน์ตัวเลขทั้งหมด (ยกเว้นคอลัมน์แรกที่เป็นแกน X)
       const allNumeric = [];
@@ -2014,6 +2065,23 @@
         numericCols = allNumeric.filter(idx => !isTotalLabel(headers[idx]));
       }
 
+      const isPercent = node.chart_value_mode === 'percent';
+      const formulas = percentageFormulas(node).map(formula => ({ ...formula,
+        numeratorIndex: headers.findIndex(h => String(h).trim() === formula.numerator),
+        denominatorIndex: headers.findIndex(h => String(h).trim() === formula.denominator)
+      }));
+      if (isPercent) {
+        if (formulas.some(formula => formula.numeratorIndex <= 0 || formula.denominatorIndex <= 0)) {
+          if (info) info.textContent = 'ไม่พบคอลัมน์ตัวตั้งหรือตัวหาร กรุณาตรวจสอบการตั้งค่า';
+          return;
+        }
+        if (node.chart_type === 'pie' || node.chart_type === 'doughnut') {
+          if (info) info.textContent = 'กราฟร้อยละรองรับเฉพาะกราฟแท่งหรือกราฟเส้น';
+          return;
+        }
+        numericCols = formulas.map(formula => formula.numeratorIndex);
+      }
+
       if (!numericCols.length) {
         if (info) {
           info.textContent = wanted.length
@@ -2023,20 +2091,24 @@
         return;
       }
 
-      const type = node.chart_type || 'bar';
+      const isHorizontal = node.chart_type === 'horizontal_bar';
+      const type = isHorizontal ? 'bar' : (node.chart_type || 'bar');
       const isPie = type === 'pie' || type === 'doughnut';
       const useCols = isPie ? [numericCols[0]] : numericCols;
       const colorMap = parseChartColors(node.chart_colors);
 
       const datasets = useCols.map((colIdx, k) => {
+        const formula = formulas[k];
         const data = dataRows.map(r => {
+          if (isPercent) return dashboardPercentage(r[formula.numeratorIndex], r[formula.denominatorIndex]);
           const n = dashToNumber(r[colIdx]);
           return n === null ? 0 : n;
         });
-        const color = colorMap[String(headers[colIdx]).trim()] || CHART_COLORS[k % CHART_COLORS.length];
+        const label = isPercent ? (formula.label || `ร้อยละ (${formula.numerator} ÷ ${formula.denominator} × 100)`) : headers[colIdx];
+        const color = (isPercent && /^#[0-9a-fA-F]{6}$/.test(formula.color || '') ? formula.color : '') || colorMap[String(headers[colIdx]).trim()] || CHART_COLORS[k % CHART_COLORS.length];
         if (type === 'line') {
           return {
-            label: headers[colIdx],
+            label: label,
             data: data,
             borderColor: color,
             backgroundColor: 'rgba(1,109,83,0.10)',
@@ -2058,7 +2130,7 @@
           };
         }
         return {
-          label: headers[colIdx],
+          label: label,
           data: data,
           backgroundColor: color,
           borderRadius: 6
@@ -2083,7 +2155,7 @@
             align: type === 'line' ? 'top' : 'end',
             offset: 2,
             clamp: true,
-            formatter: value => formatChartNumber(value)
+            formatter: value => isPercent ? (value === null ? '' : formatChartPercentage(value)) : formatChartNumber(value)
           };
 
       const chart = new Chart(canvas.getContext('2d'), {
@@ -2092,20 +2164,28 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: { top: isPie ? 0 : 18, right: 8, left: 8 } },
+          indexAxis: isHorizontal ? 'y' : 'x',
+          layout: { padding: { top: isPie ? 0 : 18, right: isHorizontal ? 65 : 8, left: 8 } },
           plugins: {
             legend: { display: isPie || datasets.length > 1, position: 'bottom' },
-            tooltip: { enabled: true },
+            tooltip: { enabled: true, ...(isPercent ? { callbacks: {
+              label: context => `${context.dataset.label}: ${formatChartPercentage(context.raw)}`
+            } } : {}) },
             datalabels: datalabels
           },
           scales: isPie ? {} : {
-            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0 } },
-            y: { beginAtZero: true }
+            [isHorizontal ? 'y' : 'x']: {
+              grid: { display: false }, ticks: { maxRotation: isHorizontal ? 0 : 45, minRotation: 0 },
+              title: { display: Boolean(node.chart_axis_title), text: node.chart_axis_title || '' }
+            },
+            [isHorizontal ? 'x' : 'y']: { beginAtZero: true, ...(isPercent ? {
+              title: { display: true, text: 'ร้อยละ (%)' },
+              ticks: { callback: value => formatChartPercentage(value) }
+            } : {}) }
           }
         }
       });
       dashboardChartInstances.push(chart);
-      if (info) info.textContent = `แกน X: ${headers[0] || '-'} · ค่า: ${useCols.map(c => headers[c]).join(', ')}`;
     }
 
     function buildMenuTree(rows) {
@@ -2578,8 +2658,17 @@
       if (field === 'sheet_name') {
         r.chart_columns = '';
         r.chart_colors = '';
+        r.chart_numerator = '';
+        r.chart_denominator = '';
+        r.chart_formulas = [];
+        r.chart_label_template = '';
+        r.chart_custom_labels = '';
         renderEditorChartColumns();
         loadEditorHeaders();
+      }
+      if (field === 'chart_value_mode' || field === 'chart_type') {
+        if (r.chart_value_mode === 'percent' && ['pie', 'doughnut'].includes(r.chart_type)) r.chart_type = 'bar';
+        renderConfigEditor();
       }
       if (field === 'id' || field === 'title' || field === 'dashboard' || field === 'sheet_name') {
         renderConfigList();
@@ -2661,11 +2750,41 @@
             <label class="form-label small text-muted mb-1">ชนิดกราฟ</label>
             <select class="form-select form-select-sm" onchange="updateConfigField('chart_type', this.value)">
               <option value="bar"${r.chart_type === 'bar' ? ' selected' : ''}>แท่ง (Bar)</option>
+              <option value="horizontal_bar"${r.chart_type === 'horizontal_bar' ? ' selected' : ''}>แท่งแนวนอน (Horizontal Bar)</option>
               <option value="line"${r.chart_type === 'line' ? ' selected' : ''}>เส้น (Line)</option>
-              <option value="pie"${r.chart_type === 'pie' ? ' selected' : ''}>วงกลม (Pie)</option>
-              <option value="doughnut"${r.chart_type === 'doughnut' ? ' selected' : ''}>โดนัท (Doughnut)</option>
+              <option value="pie"${r.chart_type === 'pie' ? ' selected' : ''}${r.chart_value_mode === 'percent' ? ' disabled' : ''}>วงกลม (Pie)</option>
+              <option value="doughnut"${r.chart_type === 'doughnut' ? ' selected' : ''}${r.chart_value_mode === 'percent' ? ' disabled' : ''}>โดนัท (Doughnut)</option>
             </select>
           </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1" for="editorValueMode">ค่าที่แสดงบนกราฟ</label>
+            <select id="editorValueMode" class="form-select form-select-sm" onchange="updateConfigField('chart_value_mode', this.value)">
+              <option value="number"${r.chart_value_mode !== 'percent' ? ' selected' : ''}>ตัวเลขจากชีต</option>
+              <option value="percent"${r.chart_value_mode === 'percent' ? ' selected' : ''}>คำนวณร้อยละ (%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3 border rounded p-3">
+          <div class="small fw-semibold mb-2">ป้ายแกนหมวดหมู่ (แกน Y สำหรับแท่งแนวนอน / แกน X สำหรับกราฟแนวตั้ง)</div>
+          <label for="editorAxisTitle" class="form-label small">ชื่อแกน</label>
+          <input id="editorAxisTitle" class="form-control form-control-sm mb-2" value="${escapeAttr(r.chart_axis_title || '')}" placeholder="เช่น ปีการศึกษา / หลักสูตร" oninput="updateConfigField('chart_axis_title', this.value)">
+          <label for="editorLabelTemplate" class="form-label small">รูปแบบชื่อแต่ละรายการ</label>
+          <input id="editorLabelTemplate" class="form-control form-control-sm" value="${escapeAttr(r.chart_label_template || '')}" placeholder="เช่น {ปีการศึกษา} - {หลักสูตร}" oninput="updateConfigField('chart_label_template', this.value)">
+          <div class="d-flex gap-2 mt-2">
+            <select id="editorLabelColumn" class="form-select form-select-sm" aria-label="เลือกคอลัมน์เพื่อต่อชื่อรายการ"></select>
+            <button type="button" class="btn btn-outline-primary btn-sm text-nowrap" onclick="appendChartLabelColumn()">ต่อชื่อคอลัมน์</button>
+          </div>
+          <div class="form-text">เลือกคอลัมน์มาต่อกัน หรือพิมพ์ข้อความเอง เช่น จำนวนลงทะเบียนใหม่ {ปีการศึกษา} เว้นว่างเพื่อใช้คอลัมน์แรก</div>
+          <label for="editorCustomLabels" class="form-label small mt-2">กำหนดชื่อรายการเอง (ไม่บังคับ)</label>
+          <textarea id="editorCustomLabels" rows="3" class="form-control form-control-sm" placeholder="พิมพ์หนึ่งชื่อต่อบรรทัด" oninput="updateConfigField('chart_custom_labels', this.value)">${escapeHtml(r.chart_custom_labels || '')}</textarea>
+          <div class="form-text">เรียงตามแถวข้อมูล โดยไม่นับแถวยอดรวม บรรทัดที่มีชื่อจะใช้แทนรูปแบบด้านบน บรรทัดว่างใช้รูปแบบเดิม</div>
+        </div>
+
+        <div class="mt-3" ${r.chart_value_mode === 'percent' ? '' : 'hidden'}>
+          <div id="editorPercentageFormulas"></div>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPercentageFormula()">เพิ่มแท่ง / สูตรร้อยละ</button>
+          <div class="form-text">สูตรต่อแถว: (ตัวตั้ง ÷ ตัวหาร) × 100 เช่น 80 ÷ 100 × 100 = 80% แสดงทศนิยมสูงสุด 2 ตำแหน่ง รองรับกราฟแท่งและเส้น แถวที่ข้อมูลว่าง ไม่ใช่ตัวเลข หรือตัวหารเป็น 0 จะไม่แสดงจุดข้อมูล</div>
         </div>
 
         <div class="mt-4">
@@ -2682,8 +2801,8 @@
           <div class="form-text mt-1" id="editorHeaderHint">— เลือกชีตก่อน —</div>
         </div>
 
-        <div class="mt-3">
-          <label class="form-label small text-muted mb-1">คอลัมน์บนกราฟ (คอลัมน์แรกใช้เป็นแกน X อัตโนมัติ)</label>
+        <div class="mt-3" ${r.chart_value_mode === 'percent' ? 'hidden' : ''}>
+          <label class="form-label small text-muted mb-1">คอลัมน์ค่าตัวเลขบนกราฟ (ตั้งชื่อรายการได้ในส่วนป้ายแกนหมวดหมู่)</label>
           <div id="editorChartColumns"
                style="max-height:120px; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px;">
             <span class="text-muted small">— เลือกชีตก่อน —</span>
@@ -2771,16 +2890,96 @@
       const box = document.getElementById('editorChartColumns');
       const r = configRows[configSelectedIdx];
       if (!box || !r) return;
+      renderPercentageColumnOptions([], r);
+      renderChartLabelColumns([]);
       if (!r.sheet_name) {
         box.innerHTML = '<span class="text-muted small">— เลือกชีตก่อน —</span>';
         return;
       }
       const selected = String(r.chart_columns || '').split(',').map(s => s.trim()).filter(Boolean);
       const colorMap = parseChartColors(r.chart_colors);
+      const targetSheet = r.sheet_name;
       box.innerHTML = '<span class="text-muted small">กำลังโหลด...</span>';
-      fetchSheetHeaders(r.sheet_name, headers => {
+      fetchSheetHeaders(targetSheet, headers => {
+        if (configRows[configSelectedIdx] !== r || r.sheet_name !== targetSheet || document.getElementById('editorChartColumns') !== box) return;
         renderChartColumnCheckboxes(box, headers, selected, colorMap);
+        renderPercentageColumnOptions(headers, r);
+        renderChartLabelColumns(headers);
       });
+    }
+
+    function renderChartLabelColumns(headers) {
+      const select = document.getElementById('editorLabelColumn');
+      if (!select) return;
+      select.innerHTML = '<option value="">— เลือกคอลัมน์เพื่อต่อชื่อ —</option>' +
+        headers.map(header => `<option value="${escapeAttr(String(header).trim())}">${escapeHtml(header)}</option>`).join('');
+    }
+
+    function appendChartLabelColumn() {
+      const row = configRows[configSelectedIdx];
+      const select = document.getElementById('editorLabelColumn');
+      const input = document.getElementById('editorLabelTemplate');
+      if (!row || !select || !input || !select.value) return;
+      const prefix = input.value || (row.chart_label_template || '');
+      const template = prefix + (prefix ? ' - ' : '') + '{' + select.value + '}';
+      input.value = template;
+      updateConfigField('chart_label_template', template);
+    }
+
+    function renderPercentageColumnOptions(headers, row) {
+      const box = document.getElementById('editorPercentageFormulas');
+      if (!box) return;
+      const formulas = percentageFormulas(row);
+      const names = headers.slice(1).map(h => String(h).trim()).filter(Boolean);
+      const options = saved => '<option value="">— เลือกคอลัมน์ —</option>' +
+          (saved && !names.includes(saved) ? `<option value="${escapeAttr(saved)}" selected>${escapeHtml(saved)} (ไม่พบคอลัมน์)</option>` : '') +
+          names.map(name => `<option value="${escapeAttr(name)}"${name === saved ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
+      box.innerHTML = formulas.map((formula, index) => `
+        <div class="border rounded p-2 mb-2">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <strong class="small">แท่ง / สูตรที่ ${index + 1}</strong>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removePercentageFormula(${index})" ${formulas.length === 1 ? 'disabled' : ''}>ลบสูตร</button>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-9"><label class="form-label small" for="formulaLabel${index}">ชื่อแท่ง / ชุดข้อมูล</label>
+              <input id="formulaLabel${index}" class="form-control form-control-sm" value="${escapeAttr(formula.label || '')}" placeholder="เช่น ร้อยละผู้สำเร็จการศึกษา" oninput="updatePercentageFormula(${index}, 'label', this.value)"></div>
+            <div class="col-md-3"><label class="form-label small" for="formulaColor${index}">สี</label>
+              <input id="formulaColor${index}" type="color" class="form-control form-control-sm form-control-color" value="${escapeAttr(formula.color || CHART_COLORS[index % CHART_COLORS.length])}" onchange="updatePercentageFormula(${index}, 'color', this.value)"></div>
+            <div class="col-md-6"><label class="form-label small" for="formulaNumerator${index}">คอลัมน์ตัวตั้ง</label>
+              <select id="formulaNumerator${index}" class="form-select form-select-sm" onchange="updatePercentageFormula(${index}, 'numerator', this.value)">${options(formula.numerator)}</select></div>
+            <div class="col-md-6"><label class="form-label small" for="formulaDenominator${index}">คอลัมน์ตัวหาร</label>
+              <select id="formulaDenominator${index}" class="form-select form-select-sm" onchange="updatePercentageFormula(${index}, 'denominator', this.value)">${options(formula.denominator)}</select></div>
+          </div>
+        </div>`).join('');
+    }
+
+    function updatePercentageFormula(index, field, value) {
+      const row = configRows[configSelectedIdx];
+      if (!row || !['label', 'numerator', 'denominator', 'color'].includes(field)) return;
+      row.chart_formulas = percentageFormulas(row);
+      if (!row.chart_formulas[index]) return;
+      row.chart_formulas[index][field] = value;
+      row.chart_numerator = row.chart_formulas[0].numerator;
+      row.chart_denominator = row.chart_formulas[0].denominator;
+    }
+
+    function addPercentageFormula() {
+      const row = configRows[configSelectedIdx];
+      if (!row) return;
+      row.chart_formulas = percentageFormulas(row);
+      row.chart_formulas.push({ label: '', numerator: '', denominator: '', color: '' });
+      renderPercentageColumnOptions(sheetHeaderCache[row.sheet_name] || [], row);
+    }
+
+    function removePercentageFormula(index) {
+      const row = configRows[configSelectedIdx];
+      if (!row) return;
+      row.chart_formulas = percentageFormulas(row);
+      if (row.chart_formulas.length <= 1 || index < 0 || index >= row.chart_formulas.length) return;
+      row.chart_formulas.splice(index, 1);
+      row.chart_numerator = row.chart_formulas[0].numerator;
+      row.chart_denominator = row.chart_formulas[0].denominator;
+      renderPercentageColumnOptions(sheetHeaderCache[row.sheet_name] || [], row);
     }
 
     function updateChartColumnsFromEditor() {
@@ -3068,6 +3267,25 @@
       thead.innerHTML = '';
       tbody.innerHTML = '';
 
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const matchingRows = rows.map((row, rowIndex) => ({ row, rowIndex }))
+        .filter(({ row, rowIndex }) => !query || `${rowIndex + 1} ${row.join(' ')}`.toLowerCase().includes(query));
+      const pageCount = Math.max(1, Math.ceil(matchingRows.length / tablePageSize));
+      tablePage = Math.max(1, Math.min(tablePage, pageCount));
+      if (highlightLastRow) {
+        const newRowPosition = matchingRows.findIndex(item => item.rowIndex === rows.length - 1);
+        if (newRowPosition >= 0) tablePage = Math.floor(newRowPosition / tablePageSize) + 1;
+      }
+      const start = (tablePage - 1) * tablePageSize;
+      const pageRows = matchingRows.slice(start, start + tablePageSize);
+      document.getElementById('tablePageInfo').textContent = matchingRows.length
+        ? `แสดง ${start + 1}–${start + pageRows.length} จาก ${matchingRows.length} รายการ${query ? ` (ทั้งหมด ${rows.length} รายการ)` : ''}`
+        : (query ? `ไม่พบข้อมูล (ทั้งหมด ${rows.length} รายการ)` : 'ไม่มีข้อมูล');
+      document.getElementById('tablePageNumber').textContent = `หน้า ${tablePage} / ${pageCount}`;
+      document.getElementById('tablePrevPage').disabled = tablePage <= 1;
+      document.getElementById('tableNextPage').disabled = tablePage >= pageCount;
+      document.getElementById('tablePageSize').value = String(tablePageSize);
+
       if (headers.length === 0) {
         thead.innerHTML = `<tr><th class="text-muted py-3">ยังไม่มีข้อมูลในหมวดหมู่นี้</th></tr>`;
         return;
@@ -3078,14 +3296,15 @@
       hRow += signedInUser && signedInUser.role === 'admin' ? '<th style="width: 90px;">จัดการ</th></tr>' : '</tr>';
       thead.innerHTML = hRow;
 
-      if (rows.length === 0) {
+      if (matchingRows.length === 0) {
         const colCount = headers.length + (signedInUser && signedInUser.role === 'admin' ? 2 : 1);
-        tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-muted py-4"><i class="bi bi-inbox me-2"></i>ยังไม่มีรายการข้อมูลในหมวดหมู่นี้</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-muted py-4"><i class="bi bi-inbox me-2"></i>${query ? 'ไม่พบข้อมูลที่ค้นหา' : 'ยังไม่มีรายการข้อมูลในหมวดหมู่นี้'}</td></tr>`;
+        highlightLastRow = false;
         return;
       }
 
       let bHtml = '';
-      rows.forEach((r, rowIndex) => {
+      pageRows.forEach(({ row: r, rowIndex }) => {
         const isNewRow = highlightLastRow && (rowIndex === rows.length - 1);
         bHtml += `<tr class="${isNewRow ? 'highlight-new' : ''}">`;
         bHtml += `<td class="row-num">${rowIndex + 1}</td>`;
@@ -3163,12 +3382,21 @@ swalConfirm('ยืนยันการลบ', `ต้องการลบข
     }
 
     function filterTable() {
-      const q = document.getElementById('searchInput').value.toLowerCase();
-      const trs = document.querySelectorAll('#tableBody tr');
-      trs.forEach(tr => {
-        const text = tr.innerText.toLowerCase();
-        tr.style.display = text.includes(q) ? '' : 'none';
-      });
+      tablePage = 1;
+      renderTable(currentHeaders, currentRows);
+    }
+
+    function changeTablePage(direction) {
+      tablePage += direction;
+      renderTable(currentHeaders, currentRows);
+    }
+
+    function changeTablePageSize(value) {
+      const size = Number(value);
+      if (![25, 50, 100].includes(size)) return;
+      tablePageSize = size;
+      tablePage = 1;
+      renderTable(currentHeaders, currentRows);
     }
 
     // แก้ไขให้แสดงผลแถวใหม่บนตารางทันทีเมื่อบันทึกเสร็จ (ไม่ต้องรอโหลดซ้ำ)

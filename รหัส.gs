@@ -184,11 +184,11 @@ function importExcelData(sheetName, excelHeaders, excelRows, mode, token) {
 // เก็บไว้ในชีตระบบ _MENU
 // ============================================================
 const MENU_SHEET_NAME = '_MENU';
-// dashboard = 1 เมื่อต้องการแสดงชีตนี้บนแดชบอร์ด, chart_type = bar | line | pie | doughnut
+// dashboard = 1 เมื่อต้องการแสดงชีตนี้บนแดชบอร์ด, chart_type = bar | horizontal_bar | line | pie | doughnut
 // chart_columns = ชื่อคอลัมน์ที่ต้องการวาดกราฟ คั่นด้วย , (ว่าง = ใช้คอลัมน์ตัวเลขทั้งหมด)
 // chart_colors = สีของแต่ละคอลัมน์ รูปแบบ "ชื่อคอลัมน์=#rrggbb" คั่นด้วย ,
-const MENU_HEADERS = ['id', 'parent_id', 'title', 'sheet_name', 'icon', 'sort', 'note', 'dashboard', 'chart_type', 'chart_columns', 'chart_colors'];
-const CHART_TYPES = ['bar', 'line', 'pie', 'doughnut'];
+const MENU_HEADERS = ['id', 'parent_id', 'title', 'sheet_name', 'icon', 'sort', 'note', 'dashboard', 'chart_type', 'chart_columns', 'chart_colors', 'chart_value_mode', 'chart_numerator', 'chart_denominator', 'chart_formulas', 'chart_label_template', 'chart_custom_labels', 'chart_axis_title'];
+const CHART_TYPES = ['bar', 'horizontal_bar', 'line', 'pie', 'doughnut'];
 
 const DEFAULT_MENU_ROWS = [
   ['1', '', 'การรับเข้าและผลลัพธ์การศึกษา', '', 'bi-mortarboard-fill', 1, 'ภาพรวมการรับเข้าและผลลัพธ์การศึกษาของนิสิต', 0, 'bar', '', ''],
@@ -225,7 +225,8 @@ function ensureDataSheet_(sheetName, initialHeaders) {
 }
 
 function seedMenu_(menuSheet) {
-  menuSheet.getRange(2, 1, DEFAULT_MENU_ROWS.length, MENU_HEADERS.length).setValues(DEFAULT_MENU_ROWS);
+  const values = DEFAULT_MENU_ROWS.map(row => row.concat(['number', '', '', '[]', '', '', '']));
+  menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setValues(values);
   DEFAULT_MENU_ROWS.forEach(row => {
     if (row[3]) ensureDataSheet_(row[3], DEFAULT_DATA_HEADERS[row[3]] || []);
   });
@@ -270,7 +271,14 @@ function getMenuConfig(token) {
           dashboard: String(r[7]).trim() === '1' ? 1 : 0,
           chart_type: CHART_TYPES.indexOf(chartType) >= 0 ? chartType : 'bar',
           chart_columns: String(r[9] || '').trim(),
-          chart_colors: String(r[10] || '').trim()
+          chart_colors: String(r[10] || '').trim(),
+          chart_value_mode: r[11] === 'percent' ? 'percent' : 'number',
+          chart_numerator: String(r[12] || '').trim(),
+          chart_denominator: String(r[13] || '').trim(),
+          chart_formulas: parseChartFormulas_(r[14] || '[]'),
+          chart_label_template: String(r[15] || ''),
+          chart_custom_labels: String(r[16] || ''),
+          chart_axis_title: String(r[17] || '').trim()
         });
       });
     }
@@ -278,6 +286,20 @@ function getMenuConfig(token) {
   } catch (err) {
     return { rows: [], sheets: [], error: err.message || String(err) };
   }
+}
+
+function parseChartFormulas_(input) {
+  let formulas = input;
+  if (typeof input === 'string') {
+    try { formulas = JSON.parse(input); } catch (error) { throw new Error('รูปแบบสูตรร้อยละไม่ถูกต้อง'); }
+  }
+  if (!Array.isArray(formulas)) throw new Error('รูปแบบสูตรร้อยละไม่ถูกต้อง');
+  return formulas.map(formula => ({
+    label: String(formula && formula.label || '').trim(),
+    numerator: String(formula && formula.numerator || '').trim(),
+    denominator: String(formula && formula.denominator || '').trim(),
+    color: /^#[0-9a-fA-F]{6}$/.test(String(formula && formula.color || '')) ? formula.color : ''
+  }));
 }
 
 function normalizeMenuRows_(rows) {
@@ -296,6 +318,15 @@ function normalizeMenuRows_(rows) {
     seen[id] = true;
     const rawDash = (r && r.dashboard);
     const chartType = String((r && r.chart_type) || 'bar').trim().toLowerCase();
+    const valueMode = r && r.chart_value_mode === 'percent' ? 'percent' : 'number';
+    const numerator = String((r && r.chart_numerator) || '').trim();
+    const denominator = String((r && r.chart_denominator) || '').trim();
+    const formulas = parseChartFormulas_(r && r.chart_formulas || []);
+    if (!formulas.length && (numerator || denominator)) formulas.push({ label: '', numerator: numerator, denominator: denominator, color: '' });
+    if (valueMode === 'percent') {
+      if (!formulas.length || formulas.some(f => !f.numerator || !f.denominator)) throw new Error('หัวข้อ "' + title + '" กรุณาเลือกคอลัมน์ตัวตั้งและตัวหารให้ครบทุกสูตร');
+      if (chartType === 'pie' || chartType === 'doughnut') throw new Error('กราฟร้อยละรองรับเฉพาะกราฟแท่งหรือกราฟเส้น');
+    }
     const chartColumns = String((r && r.chart_columns) || '')
       .split(',')
       .map(s => String(s).trim())
@@ -327,7 +358,14 @@ function normalizeMenuRows_(rows) {
       dashboard: (rawDash === 1 || rawDash === true || String(rawDash) === '1') ? 1 : 0,
       chart_type: CHART_TYPES.indexOf(chartType) >= 0 ? chartType : 'bar',
       chart_columns: chartColumns,
-      chart_colors: chartColors
+      chart_colors: chartColors,
+      chart_value_mode: valueMode,
+      chart_numerator: formulas.length ? formulas[0].numerator : numerator,
+      chart_denominator: formulas.length ? formulas[0].denominator : denominator,
+      chart_formulas: formulas,
+      chart_label_template: String(r.chart_label_template || ''),
+      chart_custom_labels: String(r.chart_custom_labels || ''),
+      chart_axis_title: String(r.chart_axis_title || '').trim()
     });
   });
 
@@ -369,7 +407,7 @@ function saveMenuConfig(rows, token) {
       menuSheet.getRange(2, 1, lastRow - 1, MENU_HEADERS.length).clearContent();
     }
     if (clean.length > 0) {
-      const values = clean.map(n => [n.id, n.parent_id, n.title, n.sheet_name, n.icon, n.sort, n.note, n.dashboard, n.chart_type, n.chart_columns, n.chart_colors]);
+      const values = clean.map(n => [n.id, n.parent_id, n.title, n.sheet_name, n.icon, n.sort, n.note, n.dashboard, n.chart_type, n.chart_columns, n.chart_colors, n.chart_value_mode, n.chart_numerator, n.chart_denominator, JSON.stringify(n.chart_formulas), n.chart_label_template, n.chart_custom_labels, n.chart_axis_title]);
       menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setValues(values);
     }
 

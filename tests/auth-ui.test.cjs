@@ -213,3 +213,162 @@ context.showLogin();
 assert.equal(flyout.style.display, 'none');
 assert.equal(flyout.innerHTML, '');
 console.log('PASS: compact root hover/tap flyout, nested menu labels, and expansion/logout cleanup');
+
+login('admin');
+vm.runInContext(`
+  currentHeaders = ['Name', 'Value'];
+  currentRows = Array.from({ length: 61 }, (_, i) => ['Record ' + (i + 1), i]);
+  tablePage = 1;
+  tablePageSize = 25;
+  renderTable(currentHeaders, currentRows);
+`, context);
+const tableBody = elements.get('tableBody');
+assert.equal((tableBody.innerHTML.match(/data-col="0"/g) || []).length, 25);
+assert.equal(elements.get('tablePrevPage').disabled, true);
+context.changeTablePage(1);
+assert(tableBody.innerHTML.includes('data-row="25"'));
+assert(tableBody.innerHTML.includes('handleDeleteRow(25)'));
+assert(!tableBody.innerHTML.includes('data-row="0"'));
+context.changeTablePage(1);
+assert.equal((tableBody.innerHTML.match(/data-col="0"/g) || []).length, 11);
+assert.equal(elements.get('tableNextPage').disabled, true);
+elements.get('searchInput').value = 'Record 60';
+context.filterTable();
+assert(tableBody.innerHTML.includes('data-row="59"'));
+assert(tableBody.innerHTML.includes('handleDeleteRow(59)'));
+assert.equal((tableBody.innerHTML.match(/data-col="0"/g) || []).length, 1);
+assert.equal(elements.get('tablePageNumber').textContent, 'หน้า 1 / 1');
+elements.get('searchInput').value = 'missing';
+context.filterTable();
+assert(tableBody.innerHTML.includes('ไม่พบข้อมูลที่ค้นหา'));
+elements.get('searchInput').value = '';
+context.filterTable();
+context.changeTablePageSize('50');
+assert.equal((tableBody.innerHTML.match(/data-col="0"/g) || []).length, 50);
+context.changeTablePage(1);
+vm.runInContext('currentRows.splice(50); renderTable(currentHeaders, currentRows);', context);
+assert.equal(elements.get('tablePageNumber').textContent, 'หน้า 1 / 1', 'Deleting the last page must clamp to an existing page');
+vm.runInContext("currentRows.push(['New record', 50]); highlightLastRow = true; renderTable(currentHeaders, currentRows);", context);
+assert.equal(elements.get('tablePageNumber').textContent, 'หน้า 2 / 2');
+assert(tableBody.innerHTML.includes('highlight-new'));
+context.showLogin();
+assert.equal(elements.get('tablePageInfo').textContent, 'ไม่มีข้อมูล');
+console.log('PASS: pagination, cross-page search, original row actions, page size, deletion, new row, logout cleanup');
+
+const plotted = [];
+context.Chart = function (_, config) { plotted.push(config); this.destroy = () => {}; };
+elements.set('percentChart', { getContext: () => ({}) });
+elements.set('percentChart_badge', element());
+elements.set('percentChart_info', element());
+const percentNode = { chart_type: 'bar', chart_value_mode: 'percent', chart_numerator: 'Actual', chart_denominator: 'Target' };
+const chartData = { headers: ['Year', 'Actual', 'Target'], rows: [
+  ['2025', '80', '100'], ['2026', '0', '100'], ['2027', '10', '0'],
+  ['2028', '', '100'], ['2029', 'invalid', '100'], ['2030', '150', '100'], ['รวม', '240', '500']
+] };
+context.drawDashboardChart('percentChart', percentNode, chartData);
+let plot = plotted.at(-1);
+assert.deepEqual(Array.from(plot.data.datasets[0].data), [80, 0, null, null, null, 150]);
+assert.equal(plot.options.plugins.datalabels.formatter(80), '80%');
+assert.equal(plot.options.plugins.datalabels.formatter(null), '');
+assert.equal(plot.options.scales.y.ticks.callback(50), '50%');
+assert(plot.options.plugins.tooltip.callbacks.label({ dataset: plot.data.datasets[0], raw: 80 }).endsWith('80%'));
+assert.equal(context.dashboardPercentage('1,000', '2,000'), 50);
+assert(Math.abs(context.dashboardPercentage('1', '3') - 100 / 3) < 1e-12);
+assert.equal(context.dashboardPercentage('Infinity', '1'), null);
+assert.equal(context.dashboardPercentage('1', ''), null);
+context.drawDashboardChart('percentChart', { ...percentNode, chart_type: 'line' }, chartData);
+assert.equal(plotted.at(-1).type, 'line');
+const plotCount = plotted.length;
+context.drawDashboardChart('percentChart', { ...percentNode, chart_denominator: 'Missing' }, chartData);
+assert.equal(plotted.length, plotCount);
+assert(elements.get('percentChart_info').textContent.includes('ไม่พบคอลัมน์'));
+context.drawDashboardChart('percentChart', { chart_type: 'bar', chart_columns: 'Actual' }, chartData);
+assert.equal(plotted.at(-1).data.datasets[0].data[0], 80, 'Legacy charts keep raw values');
+context.renderPercentageColumnOptions(chartData.headers, percentNode);
+const formulaEditor = elements.get('editorPercentageFormulas');
+assert(formulaEditor.innerHTML.includes('value="Actual" selected'));
+assert(formulaEditor.innerHTML.includes('value="Target" selected'));
+assert(!formulaEditor.innerHTML.includes('value="Year"'));
+console.log('PASS: percentage chart values, labels, missing/zero/invalid values, column selectors, and legacy charts');
+
+context.drawDashboardChart('percentChart', { ...percentNode, chart_type: 'horizontal_bar' }, chartData);
+plot = plotted.at(-1);
+assert.equal(plot.type, 'bar');
+assert.equal(plot.options.indexAxis, 'y');
+assert.equal(plot.options.scales.x.beginAtZero, true);
+assert.equal(plot.options.scales.x.ticks.callback(80), '80%');
+assert.equal(plot.options.scales.y.ticks.maxRotation, 0);
+assert.deepEqual(Array.from(plot.data.datasets[0].data), [80, 0, null, null, null, 150]);
+assert.equal(elements.get('percentChart_info').textContent, '', 'Successful charts show no formula details below them');
+context.drawDashboardChart('percentChart', { chart_type: 'horizontal_bar', chart_columns: 'Actual,Target' }, chartData);
+plot = plotted.at(-1);
+assert.equal(plot.options.indexAxis, 'y');
+assert.equal(plot.data.datasets.length, 2);
+assert.equal(plot.data.datasets[1].data[0], 100);
+assert.equal(plot.options.scales.x.ticks, undefined, 'Raw values should not receive percentage ticks');
+context.drawDashboardChart('percentChart', percentNode, chartData);
+assert.equal(plotted.at(-1).options.indexAxis, 'x', 'Vertical bars keep their original orientation');
+assert(html.includes('value="horizontal_bar"'), 'The menu editor must offer horizontal bars');
+console.log('PASS: horizontal bar configuration, numeric/percentage axes, multiple series, and vertical compatibility');
+
+const multiNode = { ...percentNode, chart_type: 'horizontal_bar', chart_formulas: [
+  { label: 'Actual rate', numerator: 'Actual', denominator: 'Target', color: '#123456' },
+  { label: 'Other rate', numerator: 'Other', denominator: 'Other target', color: '#654321' }
+] };
+const multiData = { headers: ['Year', 'Actual', 'Target', 'Other', 'Other target'], rows: [
+  ['2025', '80', '100', '20', '40'], ['2026', '50', '100', '10', '0']
+] };
+context.drawDashboardChart('percentChart', multiNode, multiData);
+plot = plotted.at(-1);
+assert.equal(plot.data.datasets.length, 2);
+assert.deepEqual(Array.from(plot.data.datasets[0].data), [80, 50]);
+assert.deepEqual(Array.from(plot.data.datasets[1].data), [50, null]);
+assert.equal(plot.data.datasets[1].label, 'Other rate');
+assert.equal(plot.data.datasets[1].backgroundColor, '#654321');
+assert.equal(plot.options.plugins.legend.display, true);
+context.drawDashboardChart('percentChart', { ...multiNode, chart_type: 'bar' }, multiData);
+assert.equal(plotted.at(-1).options.indexAxis, 'x');
+assert.equal(plotted.at(-1).data.datasets.length, 2);
+context.drawDashboardChart('percentChart', { ...multiNode, chart_type: 'line' }, multiData);
+assert.equal(plotted.at(-1).data.datasets.length, 2);
+vm.runInContext(`configRows = [{ sheet_name: 'Rates', chart_numerator: 'Actual', chart_denominator: 'Target' }]; configSelectedIdx = 0; sheetHeaderCache.Rates = ['Year', 'Actual', 'Target', 'Other'];`, context);
+context.addPercentageFormula();
+context.updatePercentageFormula(1, 'numerator', 'Other');
+context.updatePercentageFormula(1, 'denominator', 'Target');
+context.updatePercentageFormula(1, 'label', '<Other>');
+context.renderPercentageColumnOptions(multiData.headers, vm.runInContext('configRows[0]', context));
+assert(formulaEditor.innerHTML.includes('&lt;Other&gt;'));
+assert(formulaEditor.innerHTML.includes('formulaNumerator1'));
+context.removePercentageFormula(0);
+assert.equal(vm.runInContext('configRows[0].chart_numerator', context), 'Other');
+context.removePercentageFormula(0);
+assert.equal(vm.runInContext('configRows[0].chart_formulas.length', context), 1);
+console.log('PASS: independent formulas, per-series labels/colors, zero denominators, add/edit/remove, and legacy formula upgrade');
+
+const categoryData = { headers: ['Year', 'Course', 'Actual', 'Target'], rows: [
+  ['2025', 'MD', '80', '100'], ['2026', 'PMD', '50', '100'], ['รวม', '', '130', '200']
+] };
+const categoryNode = { chart_type: 'horizontal_bar', chart_columns: 'Actual', chart_label_template: '{Year} - {Course}', chart_axis_title: 'Year / Course' };
+context.drawDashboardChart('percentChart', categoryNode, categoryData);
+plot = plotted.at(-1);
+assert.deepEqual(Array.from(plot.data.labels), ['2025 - MD', '2026 - PMD']);
+assert.equal(plot.options.scales.y.title.text, 'Year / Course');
+assert.equal(plot.options.scales.y.title.display, true);
+assert.equal(elements.get('percentChart_info').textContent, '');
+context.drawDashboardChart('percentChart', { ...categoryNode, chart_type: 'bar', chart_custom_labels: 'Custom\r\n' }, categoryData);
+plot = plotted.at(-1);
+assert.deepEqual(Array.from(plot.data.labels), ['Custom', '2026 - PMD']);
+assert.equal(plot.options.scales.x.title.text, 'Year / Course');
+assert.deepEqual(Array.from(context.dashboardCategoryLabels({}, categoryData.headers, categoryData.rows.slice(0, 2))), ['2025', '2026']);
+assert.deepEqual(Array.from(context.dashboardCategoryLabels({ chart_label_template: 'New registration {Year}' }, categoryData.headers, categoryData.rows.slice(0, 2))), ['New registration 2025', 'New registration 2026']);
+context.renderChartLabelColumns(categoryData.headers);
+assert(elements.get('editorLabelColumn').innerHTML.includes('value="Year"'));
+elements.get('editorLabelTemplate').value = '{Year}';
+elements.get('editorLabelColumn').value = 'Course';
+context.appendChartLabelColumn();
+assert.equal(vm.runInContext('configRows[0].chart_label_template', context), '{Year} - {Course}');
+context.drawDashboardChart('percentChart', { ...percentNode, chart_denominator: 'Missing' }, chartData);
+assert(elements.get('percentChart_info').textContent.includes('ไม่พบคอลัมน์'));
+context.drawDashboardChart('percentChart', percentNode, chartData);
+assert.equal(elements.get('percentChart_info').textContent, '', 'Successful redraw clears earlier errors and never adds formula details');
+console.log('PASS: category label templates, joined columns, custom row names, axis titles, legacy labels, and clean chart footers');

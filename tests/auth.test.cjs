@@ -190,7 +190,7 @@ console.log('PASS: failed-login throttling and recovery');
 
 // Only intended entry points are callable via google.script.run.
 const publicFunctions = [...code.matchAll(/^function (\w+)\(/gm)].map(m => m[1]).filter(n => !n.endsWith('_')).sort();
-assert.deepEqual(publicFunctions, [...calls.map(([name]) => name), 'doGet', 'login', 'logout', 'getCurrentUser', 'setupInitialAdmin', 'unlockLogin', 'resetAdminPassword'].sort());
+assert.deepEqual(publicFunctions, [...calls.map(([name]) => name), 'doGet', 'login', 'logout', 'getCurrentUser', 'updateMyProfile', 'setupInitialAdmin', 'unlockLogin', 'resetAdminPassword'].sort());
 console.log('PASS: private helpers cannot be exposed as RPC endpoints');
 
 const adminRenameToken = session(context.authReadUser_('admin'));
@@ -267,3 +267,47 @@ assert.throws(() => context.login('admin', 'long-test-password'));
 assert.equal(properties.size, 0, 'An unconfigured app should not lock an account that does not exist yet');
 console.log('PASS: editor-only unlock, admin recovery, recovery secret cleanup, missing-account diagnosis');
 console.log('PASS: visible maintenance functions reject missing/untrusted Google identity and allow the configured account');
+
+// The pure JS crypto implementation was checked above; use its native equivalent
+// to keep the additional profile authorization scenarios fast.
+context.authPbkdf2_ = (password, salt, iterations) => crypto.pbkdf2Sync(password, salt, iterations, 32, 'sha256').toString('hex');
+assert.throws(() => context.updateMyProfile({ name: 'Anonymous' }), /AUTH_REQUIRED/);
+for (const role of ['user', 'employee', 'admin']) {
+  const owner = account('profile-' + role, role);
+  const ownerToken = session(owner);
+  const other = account('other-' + role, 'user');
+  const otherBefore = JSON.stringify(context.authReadUser_(other.username));
+  const nameOnly = context.updateMyProfile({ name: 'Updated ' + role, email: '', username: other.username, role: 'admin', active: false }, ownerToken);
+  assert.equal(nameOnly.reauthenticate, false);
+  assert.equal(nameOnly.user.username, owner.username);
+  assert.equal(nameOnly.user.role, role);
+  assert.equal(nameOnly.user.active, true);
+  assert.equal(nameOnly.user.credential, undefined);
+  assert.equal(JSON.stringify(context.authReadUser_(other.username)), otherBefore);
+  assert.equal(context.getCurrentUser(ownerToken).name, 'Updated ' + role);
+  assert.throws(() => context.updateMyProfile({ name: '', email: '' }, ownerToken), /ชื่อ/);
+  assert.throws(() => context.updateMyProfile({ name: 'Name', email: 'invalid' }, ownerToken), /อีเมล/);
+  assert.throws(() => context.updateMyProfile({ name: 'Name', email: 'new@example.com' }, ownerToken), /รหัสผ่านปัจจุบัน/);
+  assert.throws(() => context.updateMyProfile({ name: 'Name', email: '', password: 'short' }, ownerToken), /รหัสผ่าน/);
+  assert.throws(() => context.updateMyProfile({ name: 'Name', email: '', password: 'new-password', currentPassword: 'wrong' }, ownerToken), /ไม่ถูกต้อง/);
+  assert.equal(context.authReadUser_(owner.username).credential.hash, owner.credential.hash);
+  const secondSession = session(owner);
+  const changedProfile = context.updateMyProfile({ name: 'Profile', email: ' Profile-' + role + '@Example.com ', currentPassword: 'long-test-password', password: 'new-profile-password' }, ownerToken);
+  assert.equal(changedProfile.reauthenticate, true);
+  assert.equal(changedProfile.user.email, 'profile-' + role + '@example.com');
+  assert.throws(() => context.getCurrentUser(ownerToken), /AUTH_REQUIRED/);
+  assert.throws(() => context.getCurrentUser(secondSession), /AUTH_REQUIRED/);
+  assert.throws(() => context.login(owner.username, 'long-test-password'), /ไม่ถูกต้อง/);
+  const nextLogin = context.login(changedProfile.user.email, 'new-profile-password');
+  assert.equal(nextLogin.user.username, owner.username);
+  assert.throws(() => context.updateMyProfile({ name: 'Name', email: 'profile-' + role + '@example.com', currentPassword: 'long-test-password' }, session(other)), /อีเมลนี้ถูกใช้กับบัญชีอื่น/);
+  // An email-only edit preserves the password but also expires existing sessions.
+  const emailOnly = context.updateMyProfile({ name: 'Name', email: '', currentPassword: 'new-profile-password' }, nextLogin.token);
+  assert.equal(emailOnly.reauthenticate, true);
+  assert.equal(context.login(owner.username, 'new-profile-password').user.email, '');
+}
+const throttleUser = account('profile-throttle', 'user');
+const throttleToken = session(throttleUser);
+for (let i = 0; i < 5; i++) assert.throws(() => context.updateMyProfile({ name: 'Name', email: 'changed@example.com', currentPassword: 'wrong' }, throttleToken), /ไม่ถูกต้อง/);
+assert.throws(() => context.updateMyProfile({ name: 'Name', email: 'changed@example.com', currentPassword: 'long-test-password' }, throttleToken), /หลายครั้งเกินไป/);
+console.log('PASS: own-profile edits for every role, field allowlist, password verification/throttling, email login, and session revocation');

@@ -100,6 +100,18 @@ calls.at(-1).success([
   { username: 'employee', email: 'employee@example.com', name: 'Employee', role: 'employee', active: false },
   { username: 'admin', name: 'Admin', role: 'admin', active: true }
 ]);
+assert.equal(elements.get('accountsCount').textContent, '2 บัญชี');
+assert(elements.get('accountsTable').innerHTML.includes('employee@example.com'));
+elements.get('accountsSearch').value = 'ADMIN';
+context.renderAccountsTable();
+assert.equal(elements.get('accountsCount').textContent, '1 / 2 บัญชี');
+assert(elements.get('accountsTable').innerHTML.includes('editAccount(1)'), 'Filtered rows keep the correct account index');
+assert(!elements.get('accountsTable').innerHTML.includes('employee@example.com'));
+elements.get('accountsSearch').value = 'no-match';
+context.renderAccountsTable();
+assert(elements.get('accountsTable').innerHTML.includes('ไม่พบรายชื่อที่ค้นหา'));
+elements.get('accountsSearch').value = '';
+context.renderAccountsTable();
 context.editAccount(0);
 assert.equal(elements.get('accountUsername').readOnly, false);
 assert.equal(elements.get('accountUsername').value, 'employee');
@@ -372,3 +384,142 @@ assert(elements.get('percentChart_info').textContent.includes('ไม่พบ�
 context.drawDashboardChart('percentChart', percentNode, chartData);
 assert.equal(elements.get('percentChart_info').textContent, '', 'Successful redraw clears earlier errors and never adds formula details');
 console.log('PASS: category label templates, joined columns, custom row names, axis titles, legacy labels, and clean chart footers');
+
+const averageNode = { chart_type: 'bar', chart_value_mode: 'average', chart_formulas: [
+  { label: 'ความถี่เฉลี่ยในการรับคำปรึกษาต่อผู้ตอบ', numerator: 'การเรียน', denominator: 'ผู้ตอบ', color: '#123456' },
+  { label: 'ด้านอื่น', numerator: 'อื่น', denominator: 'ผู้ตอบ', color: '#654321' }
+] };
+const averageData = { headers: ['ปี', 'การเรียน', 'ผู้ตอบ', 'อื่น'], rows: [
+  ['2568', '30', '10', '15'], ['2569', '1', '3', '0'], ['2570', '0', '5', '10'],
+  ['2571', '5', '0', '10'], ['2572', '', '10', '10'], ['2573', 'invalid', '10', '10'],
+  ['2574', '10', '', '10'], ['รวม', '46', '38', '65']
+] };
+for (const chart_type of ['bar', 'horizontal_bar', 'line']) {
+  context.drawDashboardChart('percentChart', { ...averageNode, chart_type }, averageData);
+  plot = plotted.at(-1);
+  assert.deepEqual(Array.from(plot.data.datasets[0].data), [3, 1 / 3, 0, null, null, null, null]);
+  assert.deepEqual(Array.from(plot.data.datasets[1].data), [1.5, 0, 2, null, 1, 1, null]);
+  assert.equal(plot.data.datasets[0].label, averageNode.chart_formulas[0].label);
+  assert.equal(chart_type === 'line' ? plot.data.datasets[1].borderColor : plot.data.datasets[1].backgroundColor, '#654321');
+  assert.equal(plot.options.plugins.datalabels.formatter(1 / 3), '0.33');
+  assert.equal(plot.options.plugins.datalabels.formatter(null), '');
+  const valueAxis = chart_type === 'horizontal_bar' ? plot.options.scales.x : plot.options.scales.y;
+  assert.equal(valueAxis.title.text, 'ค่าเฉลี่ยต่อผู้ตอบ');
+  assert.equal(valueAxis.ticks.callback(1.5), '1.5');
+  assert(plot.options.plugins.tooltip.callbacks.label({ dataset: plot.data.datasets[0], raw: 3 }).endsWith(': 3'));
+  assert(plot.options.plugins.tooltip.callbacks.label({ dataset: plot.data.datasets[0], raw: null }).endsWith('ไม่มีข้อมูล'));
+}
+assert.equal(context.dashboardRatio('1,000', '200'), 5);
+assert.equal(context.dashboardRatio('Infinity', '2'), null);
+assert.equal(context.dashboardRatio('10', 'invalid'), null);
+const beforeInvalidAverage = plotted.length;
+context.drawDashboardChart('percentChart', { ...averageNode, chart_formulas: [{ numerator: 'การเรียน', denominator: 'Missing' }] }, averageData);
+assert.equal(plotted.length, beforeInvalidAverage);
+assert(elements.get('percentChart_info').textContent.includes('ไม่พบคอลัมน์'));
+context.drawDashboardChart('percentChart', { ...averageNode, chart_type: 'pie' }, averageData);
+assert.equal(plotted.length, beforeInvalidAverage);
+login('admin');
+vm.runInContext(`configRows = [{ sheet_name: 'Consultations', chart_type: 'pie', chart_value_mode: 'number' }]; configSelectedIdx = 0; sheetHeaderCache.Consultations = ['ปี', 'การเรียน', 'ผู้ตอบ', 'อื่น'];`, context);
+context.updateConfigField('chart_value_mode', 'average');
+assert.equal(vm.runInContext('configRows[0].chart_type', context), 'bar');
+assert(elements.get('configEditor').innerHTML.includes('value="average" selected'));
+assert(elements.get('configEditor').innerHTML.includes('การเรียน 30 ครั้ง ÷ ผู้ตอบ 10 คน = 3 ครั้งต่อคน'));
+context.updatePercentageFormula(0, 'numerator', 'การเรียน');
+context.updatePercentageFormula(0, 'denominator', 'ผู้ตอบ');
+context.updatePercentageFormula(0, 'color', '#123456');
+context.addPercentageFormula();
+context.updatePercentageFormula(1, 'numerator', 'อื่น');
+context.updatePercentageFormula(1, 'denominator', 'ผู้ตอบ');
+assert.equal(vm.runInContext('configRows[0].chart_formulas[1].denominator', context), 'ผู้ตอบ');
+context.removePercentageFormula(0);
+assert.equal(vm.runInContext('configRows[0].chart_numerator', context), 'อื่น');
+console.log('PASS: average ratios, chart types, colors, rounding, invalid inputs, missing columns, and editor mode/formulas');
+
+for (const role of ['user', 'employee', 'admin']) {
+  login(role);
+  context.openProfilePage();
+  assert.equal(elements.get('profileView').style.display, 'block');
+  assert.equal(elements.get('profileUsername').value, role);
+  assert.equal(elements.get('profileRole').value, role);
+  elements.get('profileName').value = 'Updated name';
+  const beforeProfile = calls.length;
+  context.submitMyProfile({ preventDefault() {} });
+  assert.equal(calls.length, beforeProfile + 1);
+  const request = calls.at(-1);
+  assert.equal(request.name, 'updateMyProfile');
+  assert.equal(request.args[0].name, 'Updated name');
+  assert.equal(request.args[0].role, undefined);
+  assert.equal(elements.get('profileSubmit').disabled, true);
+  context.submitMyProfile({ preventDefault() {} });
+  assert.equal(calls.at(-1), request, 'Ignore repeated submits');
+  request.success({ user: { username: role, role, name: 'Updated name', email: '' }, reauthenticate: false });
+  assert.equal(elements.get('signedInUser').textContent, 'Updated name (' + role + ')');
+  assert.equal(elements.get('profileSubmit').disabled, false);
+}
+elements.get('profilePassword').value = 'new-password';
+elements.get('profilePasswordConfirm').value = 'different';
+let beforeProfileValidation = calls.length;
+context.submitMyProfile({ preventDefault() {} });
+assert.equal(calls.length, beforeProfileValidation);
+assert(elements.get('profileMessage').textContent.includes('ไม่ตรงกัน'));
+elements.get('profilePasswordConfirm').value = 'new-password';
+context.submitMyProfile({ preventDefault() {} });
+assert.equal(calls.length, beforeProfileValidation);
+assert(elements.get('profileMessage').textContent.includes('ปัจจุบัน'));
+elements.get('profileCurrentPassword').value = 'wrong-password';
+context.submitMyProfile({ preventDefault() {} });
+calls.at(-1).failure({ message: 'Incorrect password' });
+assert.equal(elements.get('profileFields').disabled, false);
+assert.equal(elements.get('profileCurrentPassword').value, '');
+assert.equal(elements.get('profilePassword').value, '');
+elements.get('profileEmail').value = 'changed@example.com';
+elements.get('profileCurrentPassword').value = 'current-password';
+context.submitMyProfile({ preventDefault() {} });
+calls.at(-1).success({ reauthenticate: true });
+assert(body.classList.contains('auth-locked'));
+assert(elements.get('loginError').textContent.includes('บันทึกข้อมูลส่วนตัวแล้ว'));
+assert.equal(elements.get('profileEmail').value, '');
+console.log('PASS: profile page for all roles, submit guards, validation, name refresh, password cleanup, and reauthentication');
+
+login('user');
+vm.runInContext(`menuRows = [
+  { id: '1', title: '<Education>', parent_id: '', sort: 1 },
+  { id: '1.1', title: 'Nested', parent_id: '1' },
+  { id: '1.1.1', title: 'Scores', parent_id: '1.1', dashboard: 1, sheet_name: 'Scores' },
+  { id: '1.2', title: 'Hidden', parent_id: '1', dashboard: 0, sheet_name: 'Hidden' },
+  { id: '2', title: 'Support', parent_id: '', dashboard: 1, sheet_name: 'Support' },
+  { id: '3', title: 'Empty', parent_id: '' }
+]; menuTree = buildMenuTree(menuRows);`, context);
+context.renderDashboardRootFilter();
+assert(elements.get('dashboardRootFilter').innerHTML.includes('&lt;Education&gt;'));
+assert(!elements.get('dashboardRootFilter').innerHTML.includes('value="1.1"'));
+assert.deepEqual(Array.from(context.getDashboardTargets(), row => row.id), ['1.1.1', '2']);
+elements.get('dashboardCharts').appendChild = () => {};
+context.changeDashboardRootFilter('1');
+assert.deepEqual(Array.from(context.getDashboardTargets(), row => row.id), ['1.1.1']);
+const oldChartReply = calls.at(-1);
+assert.equal(oldChartReply.name, 'getSheetData');
+assert.equal(oldChartReply.args[0], 'Scores');
+context.changeDashboardRootFilter('2');
+assert.deepEqual(Array.from(context.getDashboardTargets(), row => row.id), ['2']);
+assert.equal(calls.at(-1).args[0], 'Support');
+assert.doesNotThrow(() => oldChartReply.success(chartData), 'Ignore chart responses from a previous filter');
+assert.doesNotThrow(() => oldChartReply.failure(new Error('stale request')), 'Ignore chart errors from a previous filter');
+context.renderDashboardRootFilter();
+assert.equal(elements.get('dashboardRootFilter').value, '2');
+context.changeDashboardRootFilter('3');
+assert.equal(context.getDashboardTargets().length, 0);
+assert(elements.get('dashboardCharts').innerHTML.includes('หัวข้อหลักนี้'));
+context.changeDashboardRootFilter('missing');
+assert.deepEqual(Array.from(context.getDashboardTargets(), row => row.id), ['1.1.1', '2']);
+context.changeDashboardRootFilter('2');
+vm.runInContext("menuRows = menuRows.filter(row => row.id !== '2'); menuTree = buildMenuTree(menuRows);", context);
+context.renderDashboardRootFilter();
+assert.equal(elements.get('dashboardRootFilter').value, '');
+context.showLogin();
+assert.equal(elements.get('dashboardRootFilter').value, '');
+assert(!html.includes('id="statSheets"'));
+assert(!html.includes('id="statRows"'));
+assert(!html.includes('id="statCols"'));
+assert(!html.includes('id="statPct"'));
+console.log('PASS: root-topic filtering, nested charts, empty topics, stale chart replies, removed filters, logout reset, and summary removal');

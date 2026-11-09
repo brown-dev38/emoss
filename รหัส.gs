@@ -226,7 +226,8 @@ function ensureDataSheet_(sheetName, initialHeaders) {
 
 function seedMenu_(menuSheet) {
   const values = DEFAULT_MENU_ROWS.map(row => row.concat(['number', '', '', '[]', '', '', '']));
-  menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setValues(values);
+  // Preserve IDs and column names such as 1.10, 001 and 2568 as literal text.
+  menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setNumberFormat('@').setValues(values);
   DEFAULT_MENU_ROWS.forEach(row => {
     if (row[3]) ensureDataSheet_(row[3], DEFAULT_DATA_HEADERS[row[3]] || []);
   });
@@ -272,7 +273,7 @@ function getMenuConfig(token) {
           chart_type: CHART_TYPES.indexOf(chartType) >= 0 ? chartType : 'bar',
           chart_columns: String(r[9] || '').trim(),
           chart_colors: String(r[10] || '').trim(),
-          chart_value_mode: r[11] === 'percent' ? 'percent' : 'number',
+          chart_value_mode: ['percent', 'average'].includes(r[11]) ? r[11] : 'number',
           chart_numerator: String(r[12] || '').trim(),
           chart_denominator: String(r[13] || '').trim(),
           chart_formulas: parseChartFormulas_(r[14] || '[]'),
@@ -291,9 +292,9 @@ function getMenuConfig(token) {
 function parseChartFormulas_(input) {
   let formulas = input;
   if (typeof input === 'string') {
-    try { formulas = JSON.parse(input); } catch (error) { throw new Error('รูปแบบสูตรร้อยละไม่ถูกต้อง'); }
+    try { formulas = JSON.parse(input); } catch (error) { throw new Error('รูปแบบสูตรคำนวณไม่ถูกต้อง'); }
   }
-  if (!Array.isArray(formulas)) throw new Error('รูปแบบสูตรร้อยละไม่ถูกต้อง');
+  if (!Array.isArray(formulas)) throw new Error('รูปแบบสูตรคำนวณไม่ถูกต้อง');
   return formulas.map(formula => ({
     label: String(formula && formula.label || '').trim(),
     numerator: String(formula && formula.numerator || '').trim(),
@@ -318,14 +319,14 @@ function normalizeMenuRows_(rows) {
     seen[id] = true;
     const rawDash = (r && r.dashboard);
     const chartType = String((r && r.chart_type) || 'bar').trim().toLowerCase();
-    const valueMode = r && r.chart_value_mode === 'percent' ? 'percent' : 'number';
+    const valueMode = r && ['percent', 'average'].includes(r.chart_value_mode) ? r.chart_value_mode : 'number';
     const numerator = String((r && r.chart_numerator) || '').trim();
     const denominator = String((r && r.chart_denominator) || '').trim();
     const formulas = parseChartFormulas_(r && r.chart_formulas || []);
     if (!formulas.length && (numerator || denominator)) formulas.push({ label: '', numerator: numerator, denominator: denominator, color: '' });
-    if (valueMode === 'percent') {
+    if (valueMode === 'percent' || valueMode === 'average') {
       if (!formulas.length || formulas.some(f => !f.numerator || !f.denominator)) throw new Error('หัวข้อ "' + title + '" กรุณาเลือกคอลัมน์ตัวตั้งและตัวหารให้ครบทุกสูตร');
-      if (chartType === 'pie' || chartType === 'doughnut') throw new Error('กราฟร้อยละรองรับเฉพาะกราฟแท่งหรือกราฟเส้น');
+      if (chartType === 'pie' || chartType === 'doughnut') throw new Error('กราฟ' + (valueMode === 'average' ? 'ค่าเฉลี่ย' : 'ร้อยละ') + 'รองรับเฉพาะกราฟแท่งหรือกราฟเส้น');
     }
     const chartColumns = String((r && r.chart_columns) || '')
       .split(',')
@@ -408,10 +409,14 @@ function saveMenuConfig(rows, token) {
     }
     if (clean.length > 0) {
       const values = clean.map(n => [n.id, n.parent_id, n.title, n.sheet_name, n.icon, n.sort, n.note, n.dashboard, n.chart_type, n.chart_columns, n.chart_colors, n.chart_value_mode, n.chart_numerator, n.chart_denominator, JSON.stringify(n.chart_formulas), n.chart_label_template, n.chart_custom_labels, n.chart_axis_title]);
-      menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setValues(values);
+      menuSheet.getRange(2, 1, values.length, MENU_HEADERS.length).setNumberFormat('@').setValues(values);
     }
 
-    return { status: 'success', rows: clean, sheets: getSheetList_() };
+    // Return the persisted configuration, using the same read path as a refresh.
+    SpreadsheetApp.flush();
+    const persisted = getMenuConfig(token);
+    if (persisted.error) throw new Error(persisted.error);
+    return { status: 'success', rows: persisted.rows, sheets: persisted.sheets };
   } catch (err) {
     return { status: 'error', message: err.message };
   }
@@ -613,6 +618,39 @@ function requireRole_(token, roles) {
   return user;
 }
 function getCurrentUser(token) { return authPublicUser_(requireRole_(token, AUTH_ROLES)); }
+
+function updateMyProfile(input, token) {
+  const actor = requireRole_(token, AUTH_ROLES);
+  if (!input || typeof input !== 'object') throw new Error('ข้อมูลส่วนตัวไม่ถูกต้อง');
+  const name = String(input.name || '').trim();
+  const email = authEmail_(input.email);
+  if (!name || name.length > 100) throw new Error('กรุณาระบุชื่อที่แสดง ไม่เกิน 100 ตัวอักษร');
+  const password = input.password || '';
+  if (password) authPassword_(password);
+  const sensitiveChange = Boolean(password) || email !== (actor.email || '');
+  if (sensitiveChange) {
+    if (typeof input.currentPassword !== 'string' || !input.currentPassword || input.currentPassword.length > 128) {
+      throw new Error('กรุณาระบุรหัสผ่านปัจจุบันเพื่อเปลี่ยนอีเมลหรือรหัสผ่าน');
+    }
+    // Use the existing login throttle and password verification for sensitive edits.
+    const verification = login(actor.username, input.currentPassword);
+    logout(verification.token);
+  }
+  const credential = password ? authNewCredential_(password) : null;
+  return authLocked_(() => {
+    const latest = requireRole_(token, AUTH_ROLES);
+    if (latest.version !== actor.version) throw new Error('AUTH_REQUIRED: บัญชีมีการเปลี่ยนแปลง กรุณาเข้าสู่ระบบใหม่');
+    if (authAllUsers_().some(user => user.username !== latest.username && email &&
+        (user.email === email || user.username === email))) throw new Error('อีเมลนี้ถูกใช้กับบัญชีอื่นแล้ว');
+    latest.name = name;
+    latest.email = email;
+    if (credential) latest.credential = credential;
+    if (sensitiveChange) latest.version = Utilities.getUuid();
+    authProperties_().setProperty(authUserKey_(latest.username), JSON.stringify(latest));
+    return { user: authPublicUser_(latest), reauthenticate: sensitiveChange };
+  });
+}
+
 function logout(token) {
   if (typeof token === 'string' && /^[a-f0-9-]{72}$/.test(token)) CacheService.getScriptCache().remove('AUTH_SESSION_' + authDigest_(token));
   return { status: 'success' };

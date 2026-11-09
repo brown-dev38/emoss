@@ -87,6 +87,8 @@
 
     .main-area {
       margin-left: 260px;
+      min-height: 100vh;
+      min-height: 100dvh;
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -110,6 +112,27 @@
       padding: 24px;
       flex: 1;
     }
+
+    .app-footer {
+      margin-top: auto;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 24px;
+      padding: 16px 24px;
+      border-top: 1px solid #e2e8f0;
+      background: #fff;
+      color: #64748b;
+      font-size: 0.75rem;
+      line-height: 1.8;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .app-footer > div { min-width: 0; }
+    .app-footer > div:last-child { margin-left: auto; text-align: right; }
 
     .topbar-title {
       flex: 1;
@@ -197,6 +220,17 @@
 
     .sidebar-nav > :not(#navGroupDocs) {
       flex-shrink: 0;
+    }
+
+    .sidebar-account-actions {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-account-actions .sidebar-link:last-child {
+      margin-bottom: 0;
     }
 
     #navGroupDocs {
@@ -348,6 +382,10 @@
     body.sidebar-compact .sidebar-nav {
       padding: 16px 10px;
       min-height: 0;
+    }
+
+    body.sidebar-compact .sidebar-account-actions {
+      padding: 12px 10px;
     }
 
     body.sidebar-compact .sidebar .menu-children {
@@ -938,6 +976,7 @@
     @media print {
       .sidebar,
       .topbar,
+      .app-footer,
       .doc-toolbar {
         display: none !important;
       }
@@ -1061,7 +1100,10 @@
           <i class="bi bi-people" aria-hidden="true"></i><span class="menu-label">จัดการผู้ใช้</span>
         </button>
       </div>
-      <button type="button" class="sidebar-link mt-3" onclick="openProfilePage(this)" title="ข้อมูลส่วนตัว" aria-label="ข้อมูลส่วนตัว">
+    </div>
+
+    <div class="sidebar-account-actions">
+      <button type="button" class="sidebar-link" onclick="openProfilePage(this)" title="ข้อมูลส่วนตัว" aria-label="ข้อมูลส่วนตัว">
         <i class="bi bi-person-circle" aria-hidden="true"></i><span class="menu-label">ข้อมูลส่วนตัว</span>
       </button>
       <button type="button" class="sidebar-link" onclick="signOut()" title="ออกจากระบบ" aria-label="ออกจากระบบ">
@@ -1334,6 +1376,10 @@
       </section>
 
     </div>
+    <footer class="app-footer">
+      <div>EMOSS · ระบบรายงานผลการจัดการศึกษาและการสนับสนุนนิสิต</div>
+      <div>© 2026 คณะแพทยศาสตร์ มหาวิทยาลัยพะเยา</div>
+    </footer>
   </div>
 
 <script>

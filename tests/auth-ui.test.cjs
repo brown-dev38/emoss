@@ -385,6 +385,35 @@ context.drawDashboardChart('percentChart', percentNode, chartData);
 assert.equal(elements.get('percentChart_info').textContent, '', 'Successful redraw clears earlier errors and never adds formula details');
 console.log('PASS: category label templates, joined columns, custom row names, axis titles, legacy labels, and clean chart footers');
 
+const summaryData = {
+  headers: ['กิจกรรม', 'ผู้เข้ารวมกิจกรรม', 'ผู้ตอบ', 'รวม'],
+  rows: [
+    ['กิจกรรมรวมพลังนิสิต', '12', '10', '22'],
+    [' รวมทั้งสิ้น ', '12', '10', '22'],
+    ['ภาพรวมการให้คำปรึกษา', '8', '5', '13'],
+    ['รวมทั้งหมด', '20', '15', '35'],
+    ['ยอดรวม:', '20', '15', '35'],
+    ['ผลรวม', '20', '15', '35']
+  ]
+};
+context.drawDashboardChart('percentChart', { chart_type: 'bar' }, summaryData);
+plot = plotted.at(-1);
+assert.deepEqual(Array.from(plot.data.labels), ['กิจกรรมรวมพลังนิสิต', 'ภาพรวมการให้คำปรึกษา']);
+assert.deepEqual(Array.from(plot.data.datasets, dataset => dataset.label), ['ผู้เข้ารวมกิจกรรม', 'ผู้ตอบ']);
+assert.deepEqual(Array.from(plot.data.datasets[0].data), [12, 8], 'Keep ordinary rows and columns containing รวม');
+context.drawDashboardChart('percentChart', {
+  chart_type: 'horizontal_bar', chart_columns: 'ผู้เข้ารวมกิจกรรม,รวม',
+  chart_custom_labels: 'กิจกรรม A\nยอดรวม A\nกิจกรรม B\nยอดรวม B'
+}, summaryData);
+plot = plotted.at(-1);
+assert.deepEqual(Array.from(plot.data.labels), ['กิจกรรม A', 'กิจกรรม B'], 'Custom labels keep their original row after removing summaries');
+assert.deepEqual(Array.from(plot.data.datasets[1].data), [22, 13], 'Explicitly selected total columns remain available');
+context.drawDashboardChart('percentChart', {
+  chart_type: 'line', chart_value_mode: 'percent', chart_numerator: 'ผู้เข้ารวมกิจกรรม', chart_denominator: 'ผู้ตอบ'
+}, summaryData);
+assert.deepEqual(Array.from(plotted.at(-1).data.datasets[0].data), [120, 160]);
+console.log('PASS: summary filtering preserves ordinary categories/columns and custom label alignment');
+
 const averageNode = { chart_type: 'bar', chart_value_mode: 'average', chart_formulas: [
   { label: 'ความถี่เฉลี่ยในการรับคำปรึกษาต่อผู้ตอบ', numerator: 'การเรียน', denominator: 'ผู้ตอบ', color: '#123456' },
   { label: 'ด้านอื่น', numerator: 'อื่น', denominator: 'ผู้ตอบ', color: '#654321' }

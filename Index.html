@@ -2206,16 +2206,21 @@
         return;
       }
 
-      // ข้ามแถวที่เป็นยอดรวม (เช่น "รวม", "รวมทั้งสิ้น")
-      const isTotalLabel = s => /รวม/.test(String(s === undefined || s === null ? '' : s).trim());
-      const dataRows = rows.filter(r => !isTotalLabel(r[0]));
+      // Match summary labels only; ordinary category/column names may contain "รวม".
+      const isTotalLabel = s => /^(?:รวม(?:ทั้งหมด|ทั้งสิ้น)?|ยอดรวม|ผลรวม)\s*[:：]?$/.test(String(s ?? '').trim());
+      const rowLabels = dashboardCategoryLabels(node, headers, rows);
+      const dataRows = [];
+      const labels = [];
+      rows.forEach((row, index) => {
+        if (isTotalLabel(row[0])) return;
+        dataRows.push(row);
+        labels.push(rowLabels[index]);
+      });
 
       if (!dataRows.length) {
         if (info) info.textContent = 'ไม่มีข้อมูลสำหรับวาดกราฟ (ทุกแถวเป็นยอดรวม)';
         return;
       }
-
-      const labels = dashboardCategoryLabels(node, headers, dataRows);
 
       // คอลัมน์ตัวเลขทั้งหมด (ยกเว้นคอลัมน์แรกที่เป็นแกน X)
       const allNumeric = [];

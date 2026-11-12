@@ -2286,8 +2286,6 @@
         area.style.minWidth = isPie ? '0px' : (isHorizontal
           ? (labels.some(label => String(label).length > 35) ? 760 : 560)
           : Math.max(560, labels.length * Math.max(88, useCols.length * 44) + 100)) + 'px';
-        const column = area.closest('.dashboard-chart-column');
-        if (column) column.classList.toggle('col-xl-6', isPie || (labels.length <= 8 && useCols.length <= 3 && !labels.some(label => String(label).length > 35)));
       }
 
       const datasets = useCols.map((colIdx, k) => {
